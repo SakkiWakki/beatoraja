@@ -134,6 +134,7 @@ public class FFmpegProcessor implements MovieProcessor {
 		public void run() {
 			try {
 				grabber = new FFmpegFrameGrabber(filepath);
+				Logger.getGlobal().info("動画デコーダ開始 : " + filepath);
 				grabber.start();
 				while (grabber.getVideoBitrate() < 10) {
 					final int videoStream = grabber.getVideoStream();
@@ -161,66 +162,7 @@ public class FFmpegProcessor implements MovieProcessor {
 				boolean halt = false;
 				boolean loop = false;
 				while (!halt) {
-					final long microtime = time * 1000 + offset;
-					if (eof) {
-						if (processorStatus != ProcessorStatus.DISPOSED) {
-							processorStatus = ProcessorStatus.TEXTURE_INACTIVE;
-						}
-						try {
-							sleep(3600000);
-						} catch (InterruptedException e) {
-
-						}
-					} else if (microtime >= grabber.getTimestamp()) {
-						while (microtime >= grabber.getTimestamp() || framecount % fpsd != 0) {
-							frame = grabber.grabImage();
-							if (frame == null) {
-								break;
-							}
-							framecount++;
-							// System.out.println("time : " + grabber.getTimestamp() + " --- " + time);
-						}
-						if (frame == null) {
-							eof = true;
-							if (loop) {
-								commands.offerLast(Command.LOOP);
-							}
-						} else if (frame.image != null && frame.image[0] != null) {
-							try {
-								if (pixmap == null) {
-									final long[] nativeData = { 0, frame.image[0].remaining() / frame.imageHeight / 3, frame.imageHeight,
-											Gdx2DPixmap.GDX2D_FORMAT_RGB888 };
-									pixmap = new Pixmap(new Gdx2DPixmap((ByteBuffer) frame.image[0], nativeData));
-								}
-								Gdx.app.postRunnable(() -> {
-									final Pixmap p = pixmap;
-									// dispose()を呼び出した後にshowingtexを使えばEXCEPTION_ACCESS_VIOLATIONが発生
-									if (p == null || processorStatus == ProcessorStatus.DISPOSED) {
-										return;
-									}
-									if (showingtex != null) {
-										showingtex.draw(p, 0, 0);
-									} else {
-										showingtex = new Texture(p);
-									}
-									processorStatus = ProcessorStatus.TEXTURE_ACTIVE;
-								});
-								// System.out.println("movie pixmap created : " + time);
-							} catch (Throwable e) {
-								throw new GdxRuntimeException("Couldn't load pixmap from image data", e);
-							}
-						}
-					} else {
-						final long sleeptime = (grabber.getTimestamp() - microtime) / 1000 - 1;
-						if (sleeptime > 0) {
-							try {
-								sleep(sleeptime);
-							} catch (InterruptedException e) {
-
-							}
-						}
-					}
-
+					// Process commands first so PLAY/STOP take effect immediately
 					if (!commands.isEmpty()) {
 						switch (commands.pollFirst()) {
 						case PLAY:
@@ -238,8 +180,65 @@ public class FFmpegProcessor implements MovieProcessor {
 							halt = true;
 						}
 					}
+					if (halt) break;
+
+					final long microtime = time * 1000 + offset;
+					if (eof) {
+						// Keep last frame visible — don't reset to TEXTURE_INACTIVE
+						try {
+							sleep(3600000);
+						} catch (InterruptedException e) {
+
+						}
+					} else if (microtime >= grabber.getTimestamp()) {
+						while (microtime >= grabber.getTimestamp() || framecount % fpsd != 0) {
+							frame = grabber.grabImage();
+							if (frame == null) {
+								break;
+							}
+							framecount++;
+						}
+						if (frame == null) {
+							eof = true;
+							if (loop) {
+								commands.offerLast(Command.LOOP);
+							}
+						} else if (frame.image != null && frame.image[0] != null) {
+							try {
+								if (pixmap == null) {
+									final long[] nativeData = { 0, frame.image[0].remaining() / frame.imageHeight / 3, frame.imageHeight,
+											Gdx2DPixmap.GDX2D_FORMAT_RGB888 };
+									pixmap = new Pixmap(new Gdx2DPixmap((ByteBuffer) frame.image[0], nativeData));
+								}
+								Gdx.app.postRunnable(() -> {
+									final Pixmap p = pixmap;
+									if (p == null || processorStatus == ProcessorStatus.DISPOSED) {
+										return;
+									}
+									if (showingtex != null) {
+										showingtex.draw(p, 0, 0);
+									} else {
+										showingtex = new Texture(p);
+									}
+									processorStatus = ProcessorStatus.TEXTURE_ACTIVE;
+								});
+							} catch (Throwable e) {
+								throw new GdxRuntimeException("Couldn't load pixmap from image data", e);
+							}
+						}
+					} else {
+						final long sleeptime = (grabber.getTimestamp() - microtime) / 1000 - 1;
+						if (sleeptime > 0) {
+							try {
+								sleep(sleeptime);
+							} catch (InterruptedException e) {
+
+							}
+						}
+					}
 				}
 			} catch (Throwable e) {
+				Logger.getGlobal().severe("動画再生スレッド例外 : " + filepath + " - " + e.getClass().getName() + ": " + e.getMessage());
 				e.printStackTrace();
 			} finally {
 				try {

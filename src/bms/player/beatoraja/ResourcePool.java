@@ -23,6 +23,10 @@ public abstract class ResourcePool<K, V> implements Disposable {
 	 * リソース
 	 */
 	private ConcurrentHashMap<K, ResourceCacheElement<V>> resourceMap = new ConcurrentHashMap<K, ResourceCacheElement<V>> ();
+	/**
+	 * 読み込みに失敗したキーのキャッシュ（同じファイルの繰り返しロード試行を防ぐ）
+	 */
+	private final java.util.Set<K> failedKeys = ConcurrentHashMap.newKeySet();
 
 	public ResourcePool(int maxgen) {
 		this.maxgen = maxgen;
@@ -48,15 +52,20 @@ public abstract class ResourcePool<K, V> implements Disposable {
  	public V get(K key) {
  		ResourceCacheElement<V> ie = resourceMap.get(key);
 		if(ie == null) {
+			if(failedKeys.contains(key)) {
+				return null;
+			}
 			V resource = load(key);
 			if(resource != null) {
 				ie = new ResourceCacheElement<V>(resource);
 				resourceMap.put(key, ie);
+			} else {
+				failedKeys.add(key);
 			}
 		} else {
 			ie.gen = 0;
-		} 			
-		
+		}
+
 		return ie != null ? ie.resource : null;
 	}
  	
@@ -91,9 +100,10 @@ public abstract class ResourcePool<K, V> implements Disposable {
 	
 	public void dispose() {
 		resourceMap.forEach((key, value) -> {
-			dispose(value.resource);			
+			dispose(value.resource);
 		});
 		resourceMap.clear();
+		failedKeys.clear();
 	}
 	
 	/**

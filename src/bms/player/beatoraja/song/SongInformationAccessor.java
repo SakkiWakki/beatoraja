@@ -89,21 +89,27 @@ public class SongInformationAccessor extends SQLiteDatabaseAccessor {
 
 	public void getInformation(SongData[] songs) {
 		try {
-			StringBuilder str = new StringBuilder(songs.length * 64);
-			for (SongData song : songs) {
-				if(song.getSha256() != null) {
-					if (str.length() > 0) {
-						str.append(',');
+			// SQLite limits IN clause to ~999 terms; batch to stay within limit
+			final int BATCH_SIZE = 500;
+			java.util.List<SongInformation> allInfos = new java.util.ArrayList<>();
+			for (int start = 0; start < songs.length; start += BATCH_SIZE) {
+				int end = Math.min(start + BATCH_SIZE, songs.length);
+				StringBuilder str = new StringBuilder((end - start) * 66);
+				for (int i = start; i < end; i++) {
+					if (songs[i].getSha256() != null) {
+						if (str.length() > 0) {
+							str.append(',');
+						}
+						str.append('\'').append(songs[i].getSha256()).append('\'');
 					}
-					str.append('\'').append(song.getSha256()).append('\'');
 				}
+				if (str.length() == 0) continue;
+				allInfos.addAll(Validatable.removeInvalidElements(qr
+						.query("SELECT * FROM information WHERE sha256 IN (" + str.toString() + ")", songhandler)));
 			}
-
-			List<SongInformation> infos = Validatable.removeInvalidElements(qr
-					.query("SELECT * FROM information WHERE sha256 IN (" + str.toString() + ")", songhandler));
-			for(SongData song : songs) {
-				for(SongInformation info : infos) {
-					if(info.getSha256().equals(song.getSha256())) {
+			for (SongData song : songs) {
+				for (SongInformation info : allInfos) {
+					if (info.getSha256().equals(song.getSha256())) {
 						song.setInformation(info);
 						break;
 					}

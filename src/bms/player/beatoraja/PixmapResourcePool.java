@@ -70,7 +70,7 @@ public class PixmapResourcePool extends ResourcePool<String, Pixmap> {
 		}
 		if (tex == null) {
 			String lower = path.toLowerCase(java.util.Locale.ROOT);
-			if (lower.endsWith(".wmv") || lower.endsWith(".avi") || lower.endsWith(".flv")) {
+			if (lower.endsWith(".wmv") || lower.endsWith(".avi") || lower.endsWith(".flv") || lower.endsWith(".mpg") || lower.endsWith(".mpeg") || lower.endsWith(".mp4")) {
 				// Video formats cannot be loaded as images — skip retry
 				return null;
 			}
