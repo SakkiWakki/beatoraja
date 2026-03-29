@@ -1,4 +1,21 @@
-# beatoraja
+# beatoraja (Unofficial Linux/Wayland Fork)
+
+This is an **unofficial fork** of [beatoraja](https://github.com/exch-bms2/beatoraja) focused on native Linux and Wayland support.
+
+Key changes from upstream:
+- **GDX/Scene2D launcher** replacing JavaFX (eliminates JavaFX dependency)
+- **Native Wayland support** via LWJGL 3.4.1 / GLFW 3.4
+- **Gradle build system** replacing Ant
+- **BMS charset auto-detection** (UTF-8, EUC-KR, Shift-JIS) via [forked jbms-parser](https://github.com/SakkiWakki/jbms-parser/tree/charset-autodetection)
+- **NoSQL song database** replacing SQLite
+
+For the original project, see: https://github.com/exch-bms2/beatoraja
+
+# AI Usage
+Claude was used for implementing my ideas for refactoring and optimization. 
+
+---
+
 Codename beatoraja is a Cross-platform rhythm game based on Java and libGDX.
 It works on Windows, Mac OS, and Linux.
 
@@ -17,8 +34,9 @@ It works on Windows, Mac OS, and Linux.
 - import LunaticRave2 scores (clear lamp, score. not including score verifier like scorehash)
 
 # System Requirement
-- Java Runtime Environment 17 64bit (32bit is not recommended)
-- OpenGL 3.1- (may not work under Windows 10 + Intel HD Graphics 2000/3000. See also https://github.com/LWJGL/lwjgl/issues/119)
+- Java 26+ 64bit
+- OpenGL 3.0+
+- LWJGL 3.4.1 (bundled via Gradle)
 
 # How To Use
 
