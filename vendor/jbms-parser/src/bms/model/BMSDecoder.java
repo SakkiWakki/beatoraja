@@ -468,7 +468,6 @@ public class BMSDecoder extends ChartDecoder {
 			}
 			model.setMD5(convertHexString(md5digest.digest()));
 			model.setSHA256(convertHexString(sha256digest.digest()));
-			log.add(new DecodeLog(INFO, "#PLAYER定義が1にもかかわらず2P側のノーツ定義が存在します"));
 			Logger.getGlobal().fine("BMSデータ解析時間(ms) :" + (System.currentTimeMillis() - time));
 
 			if (selectedRandom == null) {
@@ -537,8 +536,7 @@ enum CommandWord {
 	PLAYER ((model, arg) -> {
 		try {
 			final int player = Integer.parseInt(arg);
-			// TODO playerの許容幅は？
-			if (player >= 1 && player < 3) {
+			if (player >= 1 && player <= 4) {
 				model.setPlayer(player);
 			} else {
 				return new DecodeLog(WARNING, "#PLAYERに規定外の数字が定義されています : " + player);
