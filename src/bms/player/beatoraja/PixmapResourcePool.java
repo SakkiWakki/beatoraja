@@ -66,20 +66,17 @@ public class PixmapResourcePool extends ResourcePool<String, Pixmap> {
 				tex = new Pixmap(fh);
 			}
 		} catch (Throwable e) {
-			Logger.getGlobal().warning("BGAファイル読み込み失敗。" + e.getMessage());
+			Logger.getGlobal().fine("BGAファイル読み込み失敗(libGDX)。" + e.getMessage());
 		}
 		if (tex == null) {
 			String lower = path.toLowerCase(java.util.Locale.ROOT);
 			if (lower.endsWith(".wmv") || lower.endsWith(".avi") || lower.endsWith(".flv") || lower.endsWith(".mpg") || lower.endsWith(".mpeg") || lower.endsWith(".mp4")) {
-				// Video formats cannot be loaded as images — skip retry
 				return null;
 			}
-			Logger.getGlobal().warning("BGAファイル読み込み再試行:" + path);
 			try {
-				// TODO 一部のbmsはImageIO.readで失敗する(e.g. past glow)。別の画像デコーダーが必要
 				BufferedImage bi = ImageIO.read(f);
 				if (bi == null) {
-					Logger.getGlobal().warning("BGAファイル読み込み失敗。ImageIO returned null for: " + path);
+					Logger.getGlobal().warning("BGAファイル読み込み失敗: " + path);
 					return null;
 				}
 				tex = new Pixmap(bi.getWidth(), bi.getHeight(), Pixmap.Format.RGBA8888);
@@ -89,8 +86,7 @@ public class PixmapResourcePool extends ResourcePool<String, Pixmap> {
 					}
 				}
 			} catch (Throwable e) {
-				Logger.getGlobal().warning("BGAファイル読み込み失敗。" + e.getMessage());
-				e.printStackTrace();
+				Logger.getGlobal().warning("BGAファイル読み込み失敗: " + path);
 			}
 		}
 
