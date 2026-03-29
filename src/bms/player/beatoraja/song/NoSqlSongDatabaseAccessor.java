@@ -156,10 +156,11 @@ public class NoSqlSongDatabaseAccessor implements SongDatabaseAccessor {
 	public SongData[] getSongDatasByText(String text) {
 		String lowered = text.toLowerCase(Locale.ROOT);
 		List<SongData> matches = new ArrayList<SongData>();
+		Set<String> seenSha256 = new HashSet<String>();
 		for (PersistedSong song : snapshot.allSongs()) {
 			String haystack = (song.title + " " + song.subtitle + " " + song.artist + " " + song.subartist + " " + song.genre)
 					.toLowerCase(Locale.ROOT);
-			if (haystack.contains(lowered)) {
+			if (haystack.contains(lowered) && seenSha256.add(song.sha256)) {
 				matches.add(song.toSongData());
 			}
 		}
@@ -500,7 +501,7 @@ public class NoSqlSongDatabaseAccessor implements SongDatabaseAccessor {
 
 		private void updateSongDatas(Stream<Path> paths) {
 			long time = System.currentTimeMillis();
-			UpdaterState property = new UpdaterState(baseSnapshot, info, listener, bmsroot);
+			UpdaterState property = new UpdaterState(baseSnapshot, updateAll, info, listener, bmsroot);
 			property.reportProgress(SongDatabaseImportPhase.SCANNING, 0, 0, "Scanning song folders...");
 			boolean success = false;
 			if (info != null) {
@@ -709,9 +710,20 @@ public class NoSqlSongDatabaseAccessor implements SongDatabaseAccessor {
 				return SongImportResult.skip(job.pathname, !oldPreview.equals(newPreview), newPreview);
 			}
 
-			BMSModel model = job.pathname.toLowerCase(Locale.ROOT).endsWith(".bmson")
-					? new BMSONDecoder(BMSModel.LNTYPE_LONGNOTE).decode(job.path)
-					: new BMSDecoder(BMSModel.LNTYPE_LONGNOTE).decode(job.path);
+			BMSModel model = null;
+			if (job.pathname.toLowerCase(Locale.ROOT).endsWith(".bmson")) {
+				try {
+					model = new BMSONDecoder(BMSModel.LNTYPE_LONGNOTE).decode(job.path);
+				} catch (Exception e) {
+					Logger.getGlobal().severe("Error while decoding bmson at path: " + job.pathname + " " + e.getMessage());
+				}
+			} else {
+				try {
+					model = new BMSDecoder(BMSModel.LNTYPE_LONGNOTE).decode(job.path);
+				} catch (Exception e) {
+					Logger.getGlobal().severe("Error while decoding bms at path: " + job.pathname + " " + e.getMessage());
+				}
+			}
 			if (model == null) {
 				return null;
 			}
@@ -936,13 +948,13 @@ public class NoSqlSongDatabaseAccessor implements SongDatabaseAccessor {
 		private final String[] roots;
 		private volatile int totalSongs;
 
-		private UpdaterState(Snapshot baseSnapshot, SongInformationAccessor info, SongDatabaseImportListener listener, String[] roots) {
+		private UpdaterState(Snapshot baseSnapshot, boolean updateAll, SongInformationAccessor info, SongDatabaseImportListener listener, String[] roots) {
 			this.info = info;
 			this.listener = listener;
 			this.roots = roots;
-			for (int i = 0; i < SHARD_COUNT; i++) {
-				Map<String, PersistedSong> shard = new HashMap<String, PersistedSong>(baseSnapshot.songShards.get(i));
-				for (PersistedSong song : baseSnapshot.songShards.get(i).values()) {
+			// Always preserve tags and favorites across updates
+			for (Map<String, PersistedSong> baseShard : baseSnapshot.songShards) {
+				for (PersistedSong song : baseShard.values()) {
 					if (song.tag != null && song.tag.length() > 0) {
 						tags.put(song.sha256, song.tag);
 					}
@@ -950,9 +962,19 @@ public class NoSqlSongDatabaseAccessor implements SongDatabaseAccessor {
 						favorites.put(song.sha256, song.favorite);
 					}
 				}
-				songShards.add(shard);
 			}
-			foldersByPath.putAll(baseSnapshot.foldersByPath);
+			if (updateAll) {
+				// Start from empty — re-scan everything from scratch
+				for (int i = 0; i < SHARD_COUNT; i++) {
+					songShards.add(new HashMap<String, PersistedSong>());
+				}
+			} else {
+				// Copy existing data as base
+				for (Map<String, PersistedSong> baseShard : baseSnapshot.songShards) {
+					songShards.add(new HashMap<String, PersistedSong>(baseShard));
+				}
+				foldersByPath.putAll(baseSnapshot.foldersByPath);
+			}
 		}
 
 		private void pruneOutsideRoots() {

@@ -127,6 +127,34 @@ class SongInformationAccessorTest {
         }, info.getLanenotesValues());
     }
 
+    @Test
+    void getInformationBatchesLargeArraysWithoutSqlError() throws Exception {
+        // Regression: getInformation(SongData[]) with >999 songs would exceed SQLite's
+        // IN clause parameter limit, causing a SQL error. Now batched at 500.
+        SongInformationAccessor accessor = new SongInformationAccessor(tempDir.resolve("songinfo.db").toString());
+        accessor.startUpdate();
+
+        // Insert a known info entry
+        Path chart = createChart(tempDir.resolve("songs").resolve("pack").resolve("batch.bms"), "Batch Song");
+        BMSModel model = new BMSDecoder(BMSModel.LNTYPE_LONGNOTE).decode(chart);
+        SongInformation info = new SongInformation(model);
+        accessor.update(info);
+        accessor.endUpdate();
+
+        // Create an array with >1000 SongData entries, one of which matches
+        SongData[] songs = new SongData[1200];
+        for (int i = 0; i < songs.length; i++) {
+            songs[i] = new SongData();
+            songs[i].setSha256(String.format("%064x", i));
+        }
+        // Place the real one somewhere past the first batch boundary
+        songs[600] = new SongData(model, false);
+
+        // This should not throw a SQL exception
+        accessor.getInformation(songs);
+        assertNotNull(songs[600].getInformation(), "should find info for the matching song in a large batch");
+    }
+
     private Path createChart(Path path, String title) throws Exception {
         java.nio.file.Files.createDirectories(path.getParent());
         java.nio.file.Files.writeString(path, ""

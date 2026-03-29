@@ -107,6 +107,11 @@ public class FFmpegProcessor implements MovieProcessor {
 
 		public void run() {
 			try {
+				// Disable JavaCPP's physical memory limit check which can cause
+				// OOM errors even when the JVM heap is fine
+				if (System.getProperty("org.bytedeco.javacpp.maxPhysicalBytes") == null) {
+					System.setProperty("org.bytedeco.javacpp.maxPhysicalBytes", "0");
+				}
 				grabber = new FFmpegFrameGrabber(filepath);
 				Logger.getGlobal().info("動画デコーダ開始 : " + filepath);
 				grabber.start();

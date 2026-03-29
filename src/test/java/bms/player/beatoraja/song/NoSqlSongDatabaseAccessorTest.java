@@ -258,6 +258,81 @@ class NoSqlSongDatabaseAccessorTest {
 				progress.getMessage() != null && progress.getMessage().contains("Saving songs ")));
 	}
 
+	@Test
+	void textSearchDeduplicatesBySha256() throws Exception {
+		// Regression: getSongDatasByText was returning duplicates when the same chart
+		// existed at multiple paths (SQLite used GROUP BY sha256 to deduplicate)
+		Path root = tempDir.resolve("songs");
+		Path folderA = root.resolve("packA");
+		Path folderB = root.resolve("packB");
+		// Create identical charts in two different folders — same content = same sha256
+		createChart(folderA, "dup.bms", "Duplicate Chart", false);
+		createChart(folderB, "dup.bms", "Duplicate Chart", false);
+
+		NoSqlSongDatabaseAccessor accessor = newAccessor(tempDir.resolve("song.db"), root);
+		accessor.updateSongDatas(null, new String[] { root.toString() }, false, null);
+
+		SongData[] results = accessor.getSongDatasByText("Duplicate");
+		assertEquals(1, results.length, "text search should deduplicate by sha256");
+	}
+
+	@Test
+	void updateAllClearsExistingDataBeforeRescan() throws Exception {
+		// Regression: updateAll mode was not clearing existing songs/folders,
+		// so deleted charts would persist after a full rescan
+		Path root = tempDir.resolve("songs");
+		Path folderA = root.resolve("packA");
+		Path folderB = root.resolve("packB");
+		Path chartA = createChart(folderA, "a.bms", "Song A", false);
+		createChart(folderB, "b.bms", "Song B", false);
+
+		NoSqlSongDatabaseAccessor accessor = newAccessor(tempDir.resolve("song.db"), root);
+		accessor.updateSongDatas(null, new String[] { root.toString() }, false, null);
+		assertEquals(2, accessor.getSongDatasByText("Song").length);
+
+		// Delete one chart, then do updateAll — deleted chart should be gone
+		Files.delete(chartA);
+		accessor.updateSongDatas(null, new String[] { root.toString() }, true, null);
+		SongData[] afterUpdateAll = accessor.getSongDatasByText("Song");
+		assertEquals(1, afterUpdateAll.length, "updateAll should not retain deleted songs");
+		assertEquals("Song B", afterUpdateAll[0].getTitle());
+	}
+
+	@Test
+	void updateAllPreservesTagsAndFavorites() throws Exception {
+		// Regression: updateAll should clear songs but preserve user metadata (tags, favorites)
+		Path root = tempDir.resolve("songs");
+		Path chart = createChart(root.resolve("pack"), "tagged.bms", "Tagged Song", false);
+
+		NoSqlSongDatabaseAccessor accessor = newAccessor(tempDir.resolve("song.db"), root);
+		accessor.updateSongDatas(null, new String[] { root.toString() }, false, null);
+
+		SongData imported = accessor.getSongDatas("path", chart.toString())[0];
+		imported.setTag("my-tag");
+		imported.setFavorite(SongData.FAVORITE_SONG);
+		accessor.setSongDatas(new SongData[] { imported });
+
+		accessor.updateSongDatas(null, new String[] { root.toString() }, true, null);
+		SongData afterUpdateAll = accessor.getSongDatas("path", chart.toString())[0];
+		assertEquals("my-tag", afterUpdateAll.getTag(), "updateAll should preserve tags");
+		assertEquals(SongData.FAVORITE_SONG, afterUpdateAll.getFavorite(), "updateAll should preserve favorites");
+	}
+
+	@Test
+	void corruptChartDoesNotAbortEntireUpdate() throws Exception {
+		// Regression: a decode exception for one chart should not abort the entire update
+		Path root = tempDir.resolve("songs");
+		Path folder = root.resolve("pack");
+		createFile(folder.resolve("bad.bms"), "THIS IS NOT A VALID BMS FILE\n\0\0\0");
+		Path goodChart = createChart(folder, "good.bms", "Good Song", false);
+
+		NoSqlSongDatabaseAccessor accessor = newAccessor(tempDir.resolve("song.db"), root);
+		accessor.updateSongDatas(null, new String[] { root.toString() }, false, null);
+
+		SongData[] songs = accessor.getSongDatas("path", goodChart.toString());
+		assertEquals(1, songs.length, "good chart should still be imported despite bad chart");
+	}
+
 	private NoSqlSongDatabaseAccessor newAccessor(Path dbPath, Path root) throws Exception {
 		return new NoSqlSongDatabaseAccessor(dbPath.toString(), new String[] { root.toString() });
 	}
