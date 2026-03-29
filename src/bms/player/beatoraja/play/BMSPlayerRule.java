@@ -1,24 +1,27 @@
 package bms.player.beatoraja.play;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import bms.model.BMSModel;
 import bms.model.Mode;
 
 /**
  * プレイヤールール
- * 
+ *
  * @author exch
  */
 public enum BMSPlayerRule {
 
-	Beatoraja_5(GaugeProperty.FIVEKEYS, JudgeProperty.FIVEKEYS, Mode.BEAT_5K, Mode.BEAT_10K),
-	Beatoraja_7(GaugeProperty.SEVENKEYS, JudgeProperty.SEVENKEYS, Mode.BEAT_7K, Mode.BEAT_14K),
-	Beatoraja_9(GaugeProperty.PMS, JudgeProperty.PMS, Mode.POPN_5K, Mode.POPN_9K),
-	Beatoraja_24(GaugeProperty.KEYBOARD, JudgeProperty.KEYBOARD, Mode.KEYBOARD_24K, Mode.KEYBOARD_24K_DOUBLE),
-	Beatoraja_Other(GaugeProperty.SEVENKEYS, JudgeProperty.SEVENKEYS),
+	Beatoraja_5(GaugeProperty.FIVEKEYS, JudgeProperty.FIVEKEYS, "beat-5"),
+	Beatoraja_7(GaugeProperty.SEVENKEYS, JudgeProperty.SEVENKEYS, "beat-7"),
+	Beatoraja_9(GaugeProperty.PMS, JudgeProperty.PMS, "popn"),
+	Beatoraja_24(GaugeProperty.KEYBOARD, JudgeProperty.KEYBOARD, "keyboard"),
+	Beatoraja_Other(GaugeProperty.SEVENKEYS, JudgeProperty.SEVENKEYS, (String) null),
 
-	LR2(GaugeProperty.LR2, JudgeProperty.SEVENKEYS),
+	LR2(GaugeProperty.LR2, JudgeProperty.SEVENKEYS, (String) null),
 
-	Default(GaugeProperty.SEVENKEYS, JudgeProperty.SEVENKEYS),
+	Default(GaugeProperty.SEVENKEYS, JudgeProperty.SEVENKEYS, (String) null),
 ;
 
 	/**
@@ -30,30 +33,40 @@ public enum BMSPlayerRule {
 	 */
     public final JudgeProperty judge;
 	/**
-	 * 対象モード。全モード対象の場合は空列
+	 * 対象ルールカテゴリ。nullの場合はフォールバック
 	 */
-	public final Mode[] mode;
+	public final String ruleCategory;
 
-    private BMSPlayerRule(GaugeProperty gauge, JudgeProperty judge, Mode... mode) {
+	private static final Map<String, BMSPlayerRule> categoryMap = new HashMap<>();
+
+	static {
+		for (BMSPlayerRule rule : BMSPlayerRuleSet.Beatoraja.ruleset) {
+			if (rule.ruleCategory != null) {
+				categoryMap.put(rule.ruleCategory, rule);
+			}
+		}
+	}
+
+    private BMSPlayerRule(GaugeProperty gauge, JudgeProperty judge, String ruleCategory) {
         this.gauge = gauge;
         this.judge = judge;
-        this.mode = mode;
+        this.ruleCategory = ruleCategory;
     }
 
     public static BMSPlayerRule getBMSPlayerRule(Mode mode) {
-        for(BMSPlayerRule bmsrule : BMSPlayerRuleSet.Beatoraja.ruleset) {
-        	if(bmsrule.mode.length == 0) {
-    			return bmsrule; 
-        	}
-        	for(Mode m : bmsrule.mode) {
-        		if(mode == m) {
-        			return bmsrule;
-        		}
-        	}
+        BMSPlayerRule rule = categoryMap.get(mode.ruleCategory);
+        if (rule != null) {
+            return rule;
+        }
+        // Fallback: find first rule with null category (Beatoraja_Other)
+        for (BMSPlayerRule r : BMSPlayerRuleSet.Beatoraja.ruleset) {
+            if (r.ruleCategory == null) {
+                return r;
+            }
         }
         return Default;
     }
-    
+
     public static void validate(BMSModel model) {
     	BMSPlayerRule rule = getBMSPlayerRule(model.getMode());
     	final int judgerank = model.getJudgerank();
@@ -69,13 +82,13 @@ public enum BMSPlayerRule {
     		break;
     	}
     	model.setJudgerankType(BMSModel.JudgeRankType.BMSON_JUDGERANK);
-		
+
     	switch(model.getTotalType()) {
     	case BMS:
 			// TOTAL未定義の場合
 			if (model.getTotal() <= 0.0) {
 				model.setTotal(calculateDefaultTotal(model.getMode(), model.getTotalNotes()));
-			}			
+			}
     		break;
     	case BMSON:
     		final double total = calculateDefaultTotal(model.getMode(), model.getTotalNotes());
@@ -84,32 +97,22 @@ public enum BMSPlayerRule {
     	}
     	model.setTotalType(BMSModel.TotalType.BMS);
     }
-    
+
 	private static double calculateDefaultTotal(Mode mode, int totalnotes) {
-		switch (mode) {
-		case BEAT_7K:
-		case BEAT_5K:
-		case BEAT_14K:
-		case BEAT_10K:
-		case POPN_9K:
-		case POPN_5K:
-			return Math.max(260.0, 7.605 * totalnotes / (0.01 * totalnotes + 6.5));
-		case KEYBOARD_24K:
-		case KEYBOARD_24K_DOUBLE:
+		if ("keyboard".equals(mode.ruleCategory)) {
 			return Math.max(300.0, 7.605 * (totalnotes + 100) / (0.01 * totalnotes + 6.5));
-		default:
-			return Math.max(260.0, 7.605 * totalnotes / (0.01 * totalnotes + 6.5));
 		}
+		return Math.max(260.0, 7.605 * totalnotes / (0.01 * totalnotes + 6.5));
 	}
 }
 
 enum BMSPlayerRuleSet {
-	
+
 	Beatoraja(BMSPlayerRule.Beatoraja_5, BMSPlayerRule.Beatoraja_7, BMSPlayerRule.Beatoraja_9, BMSPlayerRule.Beatoraja_24,  BMSPlayerRule.Beatoraja_Other),
 	LR2(BMSPlayerRule.LR2);
-	
+
 	public final BMSPlayerRule[] ruleset;
-	
+
     private BMSPlayerRuleSet(BMSPlayerRule... ruleset) {
     	this.ruleset = ruleset;
     }
