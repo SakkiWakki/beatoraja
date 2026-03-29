@@ -76,7 +76,7 @@ public class PixmapResourcePool extends ResourcePool<String, Pixmap> {
 			try {
 				BufferedImage bi = ImageIO.read(f);
 				if (bi == null) {
-					Logger.getGlobal().warning("BGAファイル読み込み失敗: " + path);
+					Logger.getGlobal().fine("BGAファイル読み込み失敗: " + path);
 					return null;
 				}
 				tex = new Pixmap(bi.getWidth(), bi.getHeight(), Pixmap.Format.RGBA8888);
@@ -86,7 +86,7 @@ public class PixmapResourcePool extends ResourcePool<String, Pixmap> {
 					}
 				}
 			} catch (Throwable e) {
-				Logger.getGlobal().warning("BGAファイル読み込み失敗: " + path);
+				Logger.getGlobal().fine("BGAファイル読み込み失敗: " + path);
 			}
 		}
 
