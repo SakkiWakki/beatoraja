@@ -64,7 +64,10 @@ public class MessageRenderer implements Disposable  {
 
 	@Override
 	public void dispose() {
-		generator.dispose();
+		if (generator != null) {
+			generator.dispose();
+			generator = null;
+		}
 	}
 	
 	/**

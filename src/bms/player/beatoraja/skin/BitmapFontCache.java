@@ -34,4 +34,14 @@ public class BitmapFontCache {
     static public CacheableBitmapFont Get(Path path) {
         return _cacheStore.get(path);
     }
+
+    static public void dispose() {
+        for (CacheableBitmapFont cached : _cacheStore.values()) {
+            if (cached.font != null) {
+                cached.font.dispose();
+                cached.font = null;
+            }
+        }
+        _cacheStore.clear();
+    }
 }

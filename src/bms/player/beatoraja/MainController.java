@@ -31,6 +31,7 @@ import bms.player.beatoraja.result.CourseResult;
 import bms.player.beatoraja.result.MusicResult;
 import bms.player.beatoraja.select.MusicSelector;
 import bms.player.beatoraja.select.bar.TableBar;
+import bms.player.beatoraja.skin.BitmapFontCache;
 import bms.player.beatoraja.skin.SkinLoader;
 import bms.player.beatoraja.skin.SkinObject.SkinOffset;
 import bms.player.beatoraja.skin.SkinProperty;
@@ -653,6 +654,13 @@ public class MainController {
 //		input.dispose();
 		SkinLoader.getResource().dispose();
 		ShaderManager.dispose();
+		BitmapFontCache.dispose();
+		if (systemfont != null) {
+			systemfont.dispose();
+		}
+		if (messageRenderer != null) {
+			messageRenderer.dispose();
+		}
 		if (download != null) {
 			download.dispose();
 		}

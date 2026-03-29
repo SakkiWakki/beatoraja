@@ -226,10 +226,8 @@ public final class SkinTextBitmap extends SkinText {
 
 		@Override
 		public void dispose() {
-			if (font != null) {
-				font.dispose();
-				font = null;
-			}
+			// Font is shared via BitmapFontCache, do not dispose here!
+			font = null;
 		}
 	}
 }
