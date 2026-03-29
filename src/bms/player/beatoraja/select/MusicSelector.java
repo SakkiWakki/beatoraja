@@ -8,6 +8,7 @@ import java.util.logging.Logger;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.*;
@@ -212,6 +213,7 @@ public final class MusicSelector extends MainState {
 			}
 			search = new SearchTextField(this, (int) getSkin().getWidth(), (int) getSkin().getHeight());
 			setStage(search);
+			Gdx.input.setInputProcessor(new com.badlogic.gdx.InputMultiplexer(search, main.getInputProcessor().getKeyBoardInputProcesseor()));
 		}
 	}
 

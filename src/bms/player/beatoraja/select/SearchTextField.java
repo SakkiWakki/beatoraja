@@ -103,17 +103,7 @@ public class SearchTextField extends Stage {
 						textField.getOnscreenKeyboard().show(false);
 						setKeyboardFocus(null);
 					}
-					if (!searchfont.getData().hasGlyph(key)) {
-						FreeTypeFontGenerator.FreeTypeFontParameter parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
-						parameter.size = (int) r.height;
-						parameter.characters += textField.getText() + key;
-						BitmapFont newsearchfont = generator.generateFont(parameter);
-						textFieldStyle.font = newsearchfont;
-						textFieldStyle.messageFont = newsearchfont;
-						searchfont.dispose();
-						searchfont = newsearchfont;
-						textField.appendText(String.valueOf(key));
-					}
+					// incremental = true handles new glyphs automatically
 
 				}
 
