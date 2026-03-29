@@ -38,19 +38,53 @@ It works on Windows, Mac OS, and Linux.
 - OpenGL 3.0+
 - LWJGL 3.4.1 (bundled via Gradle)
 
-# How To Use
+# Building
 
-> java -jar beatoraja.jar -(a|p|r1|r2|r3|r4|s) [BMS path]
+Prerequisites:
+- JDK 26+ ([Arch](https://archlinux.org/packages/extra/x86_64/jdk-openjdk/), [SDKMAN](https://sdkman.io/), or [Oracle](https://jdk.java.net/26/))
+- Gradle 9+ (or use the system package manager)
 
-- options
-  - a : autoplay
-  - p : practice
-  - r1-r4 : start replay data 1-4
-  - s : skip configuration
+```bash
+git clone https://github.com/SakkiWakki/beatoraja.git
+cd beatoraja
+gradle build
+```
 
-beatoraja uses a large amount of heap memory. So it is recommended that you use options of extending heap memory : e.g. -Xms1g -Xmx4g.
+This produces `build/libs/beatoraja.jar` (fat jar with all dependencies).
 
-On JRE 32bit, maximum heap memory size is limited to 1.4G-1.6G. See http://www.oracle.com/technetwork/java/hotspotfaq-138619.html#gc_heap_32bit
+To run tests:
+```bash
+gradle test
+```
+
+# How To Run
+
+Using the included launch script (Linux):
+```bash
+./beatoraja.sh
+```
+
+Or manually:
+```bash
+java --enable-native-access=ALL-UNNAMED -Xms1g -Xmx4g -jar build/libs/beatoraja.jar
+```
+
+Command-line options:
+```
+java -jar beatoraja.jar -(a|p|r1|r2|r3|r4|s) [BMS path]
+```
+
+- `a` : autoplay
+- `p` : practice
+- `r1`-`r4` : start replay data 1-4
+- `s` : skip launcher, start game directly
+
+Without options, the launcher configuration window opens first.
+
+beatoraja uses a large amount of heap memory. `-Xms1g -Xmx4g` is recommended.
+
+# TODO
+- [ ] Remake launcher with human hands to avoid clanker logic
 
 **Don't use this application for playing copyrighted contents.**
 
