@@ -1,5 +1,8 @@
 # beatoraja (Unofficial Linux/Wayland Fork)
 
+# TODO
+- [ ] Remake launcher with human hands to avoid clanker logic
+
 This is an **unofficial fork** of [beatoraja](https://github.com/exch-bms2/beatoraja) focused on native Linux and Wayland support.
 
 Key changes from upstream:
@@ -84,9 +87,6 @@ java -jar beatoraja.jar -(a|p|r1|r2|r3|r4|s) [BMS path]
 Without options, the launcher configuration window opens first.
 
 beatoraja uses a large amount of heap memory. `-Xms1g -Xmx4g` is recommended.
-
-# TODO
-- [ ] Remake launcher with human hands to avoid clanker logic
 
 **Don't use this application for playing copyrighted contents.**
 
