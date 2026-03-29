@@ -10,6 +10,7 @@ import java.io.OutputStreamWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -103,20 +104,22 @@ public class TableData implements Validatable {
 			if (p.toString().endsWith(".bmt")) {
 				is = new GZIPInputStream(Files.newInputStream(p));
 			} else if(p.toString().endsWith(".json")) {
-				is = Files.newInputStream(p);			
+				is = Files.newInputStream(p);
 			}
 
 			if(is != null) {
-				Json json = new Json();
-				json.setIgnoreUnknownFields(true);
-				TableData td = json.fromJson(TableData.class, new BufferedInputStream(is));
-				if(td == null || !td.validate()) {
-					td = null;
+				try (BufferedInputStream bis = new BufferedInputStream(is)) {
+					Json json = new Json();
+					json.setIgnoreUnknownFields(true);
+					TableData td = json.fromJson(TableData.class, bis);
+					if(td == null || !td.validate()) {
+						td = null;
+					}
+					return td;
 				}
-				return td;				
 			}
 		} catch(Throwable e) {
-
+			Logger.getGlobal().warning("難易度表データ読み込み時の例外: " + p + " : " + e.getMessage());
 		}
 		return null;
 	}
@@ -130,7 +133,7 @@ public class TableData implements Validatable {
 			} else if(p.toString().endsWith(".json")) {
 				os = new FileOutputStream(p.toFile());
 			}
-			
+
 			if(os != null) {
 				Json json = new Json();
 				json.setElementType(TableData.class, "folder", ArrayList.class);
@@ -138,13 +141,12 @@ public class TableData implements Validatable {
 				json.setElementType(TableData.class, "course", ArrayList.class);
 				json.setElementType(CourseData.class, "trophy", ArrayList.class);
 				json.setOutputType(OutputType.json);
-				OutputStreamWriter fw = new OutputStreamWriter(new BufferedOutputStream(os), "UTF-8");
-				fw.write(json.prettyPrint(td));
-				fw.flush();
-				fw.close();				
+				try (OutputStreamWriter fw = new OutputStreamWriter(new BufferedOutputStream(os), "UTF-8")) {
+					fw.write(json.prettyPrint(td));
+				}
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.getGlobal().warning("難易度表データ書き込み時の例外: " + p + " : " + e.getMessage());
 		}
 	}
 

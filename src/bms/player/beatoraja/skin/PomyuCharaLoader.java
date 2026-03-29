@@ -10,6 +10,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Logger;
 
 import bms.player.beatoraja.skin.property.TimerProperty;
 import bms.player.beatoraja.play.PlaySkin;
@@ -65,10 +66,12 @@ public class PomyuCharaLoader {
 			if(chp == null && chpdir != null) {
 				//chpファイルを探す
 				File[] filename = chpdir.listFiles();
-				for(int i = 0; i < filename.length; i++) {
-					if (filename[i].getPath().substring(filename[i].getPath().length()-4,filename[i].getPath().length()).equalsIgnoreCase(".chp")) {
-						chp = new File(filename[i].getPath());
-						break;
+				if(filename != null) {
+					for(int i = 0; i < filename.length; i++) {
+						if (filename[i].getPath().substring(filename[i].getPath().length()-4,filename[i].getPath().length()).equalsIgnoreCase(".chp")) {
+							chp = new File(filename[i].getPath());
+							break;
+						}
 					}
 				}
 			}
@@ -193,7 +196,9 @@ public class PomyuCharaLoader {
 						}
 					}
 				}
-			} catch (IOException e) {}
+			} catch (IOException e) {
+				Logger.getGlobal().warning("CHPファイル読み込み時の例外: " + chp + " : " + e.getMessage());
+			}
 
 			//#CharBMPが無い時はreturn
 			if(CharBMP[CharBMPIndex] == null) return null;

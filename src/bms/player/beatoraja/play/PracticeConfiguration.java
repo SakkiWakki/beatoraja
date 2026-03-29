@@ -70,10 +70,10 @@ public final class PracticeConfiguration {
 		Path p = Paths.get("practice/" + model.getSHA256() + ".json");
 		if (Files.exists(p)) {
 			Json json = new Json();
-			try {
-				property = json.fromJson(PracticeProperty.class, new FileReader(p.toFile()));
-			} catch (FileNotFoundException | SerializationException e) {
-				e.printStackTrace();
+			try (FileReader reader = new FileReader(p.toFile())) {
+				property = json.fromJson(PracticeProperty.class, reader);
+			} catch (IOException | SerializationException e) {
+				Logger.getGlobal().warning("練習設定読み込み時の例外: " + p + " : " + e.getMessage());
 			}
 		}
 

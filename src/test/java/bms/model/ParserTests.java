@@ -30,7 +30,12 @@ class ParserTests {
 
         assertNull(CommandWord.PLAYER.function.apply(model, "2"));
         assertEquals(2, model.getPlayer());
-        assertWarning(CommandWord.PLAYER.function.apply(model, "3"), "#PLAYERに規定外の数字");
+        assertNull(CommandWord.PLAYER.function.apply(model, "3"));
+        assertEquals(3, model.getPlayer());
+        assertNull(CommandWord.PLAYER.function.apply(model, "4"));
+        assertEquals(4, model.getPlayer());
+        assertWarning(CommandWord.PLAYER.function.apply(model, "5"), "#PLAYERに規定外の数字");
+        assertWarning(CommandWord.PLAYER.function.apply(model, "0"), "#PLAYERに規定外の数字");
         assertWarning(CommandWord.PLAYER.function.apply(model, "x"), "#PLAYERに数字が定義されていません");
 
         assertNull(CommandWord.GENRE.function.apply(model, "Genre"));
@@ -709,7 +714,7 @@ class ParserTests {
                 + "#ENDRANDOM\n"
                 + "#player 1\n"
                 + "#title Lowercase Works\n"
-                + "#PLAYER 3\n"
+                + "#PLAYER 5\n"
                 + "#BPM -120\n"
                 + "#BPM 120\n"
                 + "#BPMAA nope\n"
@@ -747,7 +752,6 @@ class ParserTests {
         assertHasWarning(decoder.getDecodeLog(), "小節に数字が定義されていません");
         assertHasWarning(decoder.getDecodeLog(), "チャンネル定義が無効です");
         assertHasWarning(decoder.getDecodeLog(), "TOTALが未定義です");
-        assertHasWarning(decoder.getDecodeLog(), "#PLAYER定義が1にもかかわらず2P側のノーツ定義が存在します");
     }
 
     @Test

@@ -535,14 +535,16 @@ public final class PlayDataAccessor {
 				String path = this.getReplayDataFilePath(model, lnmode, index);
 				ReplayData result = null;
 				if (Files.exists(Paths.get(path + ".brd"))) {
-					result =  json.fromJson(ReplayData.class, new BufferedInputStream(
-							new GZIPInputStream(Files.newInputStream(Paths.get(path + ".brd")))));
+					try (BufferedInputStream bis = new BufferedInputStream(
+							new GZIPInputStream(Files.newInputStream(Paths.get(path + ".brd"))))) {
+						result = json.fromJson(ReplayData.class, bis);
+					}
 				}
 				if(result != null && result.validate()) {
 					return result;
 				}
 			} catch (IOException e) {
-				e.printStackTrace();
+				Logger.getGlobal().warning("リプレイデータ読み込み時の例外:" + e.getMessage());
 			}
 		}
 		return null;
@@ -568,15 +570,13 @@ public final class PlayDataAccessor {
 		try {
 			String path = this.getReplayDataFilePath(model, lnmode, index) + ".brd";
 			rd.shrink();
-			OutputStreamWriter fw = new OutputStreamWriter(
-					new BufferedOutputStream(new GZIPOutputStream(new FileOutputStream(path))), "UTF-8");
-			fw.write(json.prettyPrint(rd));
-			fw.flush();
-			fw.close();
+			try (OutputStreamWriter fw = new OutputStreamWriter(
+					new BufferedOutputStream(new GZIPOutputStream(new FileOutputStream(path))), "UTF-8")) {
+				fw.write(json.prettyPrint(rd));
+			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.getGlobal().warning("リプレイデータ書き込み時の例外:" + e.getMessage());
 		}
-
 	}
 
 	public ReplayData[] readReplayData(BMSModel[] models, int lnmode, int index,
@@ -608,8 +608,10 @@ public final class PlayDataAccessor {
 				String path = this.getReplayDataFilePath(hash, ln, lnmode, index, constraint);
 				ReplayData[] result = null;
 				if (Files.exists(Paths.get(path + ".brd"))) {
-					result = json.fromJson(ReplayData[].class, new BufferedInputStream(
-							new GZIPInputStream(Files.newInputStream(Paths.get(path + ".brd")))));
+					try (BufferedInputStream bis = new BufferedInputStream(
+							new GZIPInputStream(Files.newInputStream(Paths.get(path + ".brd"))))) {
+						result = json.fromJson(ReplayData[].class, bis);
+					}
 				}
 				if(result != null) {
 					for(ReplayData rd : result) {
@@ -621,7 +623,7 @@ public final class PlayDataAccessor {
 				}
 
 			} catch (IOException e) {
-				e.printStackTrace();
+				Logger.getGlobal().warning("コースリプレイデータ読み込み時の例外:" + e.getMessage());
 			}
 		}
 		return null;
@@ -656,14 +658,13 @@ public final class PlayDataAccessor {
 		try {
 			String path = this.getReplayDataFilePath(hash, ln, lnmode, index, constraint) + ".brd";
 			Stream.of(rd).forEach(ReplayData::shrink);
-			OutputStreamWriter fw = new OutputStreamWriter(
-					new BufferedOutputStream(new GZIPOutputStream(new FileOutputStream(path))), "UTF-8");
-			fw.write(json.prettyPrint(rd));
-			fw.flush();
-			fw.close();
+			try (OutputStreamWriter fw = new OutputStreamWriter(
+					new BufferedOutputStream(new GZIPOutputStream(new FileOutputStream(path))), "UTF-8")) {
+				fw.write(json.prettyPrint(rd));
+			}
 			Logger.getGlobal().info("コースリプレイを保存:" + path);
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.getGlobal().warning("コースリプレイデータ書き込み時の例外:" + e.getMessage());
 		}
 	}
 

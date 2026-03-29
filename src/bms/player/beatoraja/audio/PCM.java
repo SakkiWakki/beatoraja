@@ -260,8 +260,8 @@ public abstract class PCM<T> {
 					bitsPerSample = 16;
 					
 					pcm = getDirectByteBuffer(output.size()).put(output.getBuffer(), 0, output.size());
-//					System.out.println(name + " - length : " + input.getLength() + " ( " + input.getLength() * 16 + " ) " + " , bytes : " + bytes);
 				} catch (Throwable ex) {
+					Logger.getGlobal().warning("OGG処理中の例外 - file : " + p + " error : " + ex.getMessage());
 				}
 			} else if (name.endsWith(".mp3")) {
 				// mp3
@@ -295,6 +295,7 @@ public abstract class PCM<T> {
 					pcm = getDirectByteBuffer(bytes.length).put(bytes);
 					bitsPerSample = 16;
 				} catch (Throwable ex) {
+					Logger.getGlobal().warning("MP3処理中の例外 - file : " + p + " error : " + ex.getMessage());
 				}
 			} else if (name.endsWith(".flac")) {
 				// flac

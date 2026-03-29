@@ -5,6 +5,7 @@ import com.badlogic.gdx.utils.JsonWriter;
 
 import java.io.*;
 import java.nio.file.*;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 /**
@@ -21,9 +22,10 @@ public class CourseDataAccessor {
 		try {
 			Files.createDirectories(Paths.get(coursedir));
 		} catch (IOException e) {
+			Logger.getGlobal().warning("コースディレクトリ作成時の例外:" + e.getMessage());
 		}
     }
-    
+
     /**
      * 全てのコースデータを読み込む
      *
@@ -32,39 +34,35 @@ public class CourseDataAccessor {
     public CourseData[] readAll() {
         return Stream.of(readAllNames()).flatMap(name -> Stream.of(read(name))).toArray(CourseData[]::new);
     }
-    
+
     public String[] readAllNames() {
         try (Stream<Path> paths = Files.list(Paths.get(coursedir))) {
         	return paths.map(p -> p.getFileName().toString().substring(0, p.getFileName().toString().lastIndexOf('.'))).toArray(String[]::new);
         } catch (IOException e) {
-            e.printStackTrace();
+            Logger.getGlobal().warning("コースデータ一覧取得時の例外:" + e.getMessage());
             return new String[0];
         }
     }
 
     public CourseData[] read(String name) {
         Path p = Paths.get(coursedir + "/" + name + ".json");
-        boolean isList = false;
-        try {
+        try (InputStream is = new BufferedInputStream(Files.newInputStream(p))) {
             Json json = new Json();
 			json.setIgnoreUnknownFields(true);
-            CourseData[] courses =  json.fromJson(CourseData[].class,
-                    new BufferedInputStream(Files.newInputStream(p)));
+            CourseData[] courses = json.fromJson(CourseData[].class, is);
             return Stream.of(courses).filter(CourseData::validate).toArray(CourseData[]::new);
         } catch(Throwable e) {
-
+            // Array parse failed, try single object
         }
-        if(!isList) {
-            try {
-                Json json = new Json();
-				json.setIgnoreUnknownFields(true);
-                CourseData course = json.fromJson(CourseData.class,
-                        new BufferedInputStream(Files.newInputStream(p)));
-            	if(course.validate()) {
-            		return new CourseData[]{course};
-            	}
-            } catch(Throwable e) {
-            }
+        try (InputStream is = new BufferedInputStream(Files.newInputStream(p))) {
+            Json json = new Json();
+			json.setIgnoreUnknownFields(true);
+            CourseData course = json.fromJson(CourseData.class, is);
+        	if(course.validate()) {
+        		return new CourseData[]{course};
+        	}
+        } catch(Throwable e) {
+            Logger.getGlobal().warning("コースデータ読み込み時の例外: " + p + " : " + e.getMessage());
         }
         return new CourseData[0] ;
     }
@@ -78,13 +76,12 @@ public class CourseDataAccessor {
         	Stream.of(cd).forEach(CourseData::shrink);
             Json json = new Json();
             json.setOutputType(JsonWriter.OutputType.json);
-            OutputStreamWriter fw = new OutputStreamWriter(new BufferedOutputStream(
-                    new FileOutputStream(coursedir + "/" + name + ".json")), "UTF-8");
-            fw.write(json.prettyPrint(cd));
-            fw.flush();
-            fw.close();
+            try (OutputStreamWriter fw = new OutputStreamWriter(new BufferedOutputStream(
+                    new FileOutputStream(coursedir + "/" + name + ".json")), "UTF-8")) {
+                fw.write(json.prettyPrint(cd));
+            }
         } catch (IOException e) {
-            e.printStackTrace();
+            Logger.getGlobal().warning("コースデータ書き込み時の例外:" + e.getMessage());
         }
     }
 
