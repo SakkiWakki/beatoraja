@@ -90,6 +90,8 @@ public class MainController {
 	private RankingDataCache ircache = new RankingDataCache();
 
 	private SpriteBatch sprite;
+	private OrthographicCamera camera;
+	private com.badlogic.gdx.utils.viewport.StretchViewport viewport;
 	/**
 	 * 1曲プレイで指定したBMSファイル
 	 */
@@ -306,7 +308,13 @@ public class MainController {
 	public void create() {
 		final long t = System.currentTimeMillis();
 		sprite = new SpriteBatch();
-		sprite.getProjectionMatrix().setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+		float uiW = config.getUiWidth();
+		float uiH = config.getUiHeight();
+		camera = new OrthographicCamera();
+		camera.setToOrtho(false, uiW, uiH);
+		viewport = new com.badlogic.gdx.utils.viewport.StretchViewport(uiW, uiH, camera);
+		viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
+		sprite.setProjectionMatrix(camera.combined);
 		SkinLoader.initPixmapResourcePool(config.getSkinPixmapGen());
 
 		try {
@@ -419,6 +427,8 @@ public class MainController {
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
 		current.render();
+		viewport.apply();
+		sprite.setProjectionMatrix(camera.combined);
 		sprite.begin();
 		if (current.getSkin() != null) {
 			current.getSkin().updateCustomObjects(current);
@@ -431,6 +441,10 @@ public class MainController {
 			stage.act(Math.min(Gdx.graphics.getDeltaTime(), 1 / 30f));
 			stage.draw();
 		}
+
+		// Re-apply our viewport after Stage may have changed it
+		viewport.apply();
+		sprite.setProjectionMatrix(camera.combined);
 
 		// show fps
 		if (showfps && systemfont != null) {
@@ -650,20 +664,25 @@ public class MainController {
 		current.pause();
 	}
 
+	/**
+	 * Update the viewport's virtual resolution to match a newly loaded skin.
+	 */
+	public void updateViewportForSkin(float skinWidth, float skinHeight) {
+		if (viewport != null && skinWidth > 0 && skinHeight > 0) {
+			viewport.setWorldSize(skinWidth, skinHeight);
+			viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
+			sprite.setProjectionMatrix(camera.combined);
+		}
+	}
+
 	public void resize(int width, int height) {
 		if (!Gdx.graphics.isFullscreen() && config.getDisplaymode() == Config.DisplayMode.WINDOW) {
 			config.setWindowWidth(width);
 			config.setWindowHeight(height);
-			config.setUseResolution(false);
 		}
-		if (sprite != null) {
-			sprite.getProjectionMatrix().setToOrtho2D(0, 0, width, height);
-		}
-		if (current != null && current.getSkin() != null && current.getSkin().header.getSkinType() != null) {
-			current.loadSkin(current.getSkin().header.getSkinType());
-			if (current.getSkin() != null) {
-				current.getSkin().prepare(current);
-			}
+		if (viewport != null) {
+			viewport.update(width, height, true);
+			sprite.setProjectionMatrix(camera.combined);
 		}
 		current.resize(width, height);
 	}
