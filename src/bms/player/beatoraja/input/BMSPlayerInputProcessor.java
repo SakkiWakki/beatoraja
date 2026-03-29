@@ -33,8 +33,7 @@ public class BMSPlayerInputProcessor {
 	private KeyLogger keylog = new KeyLogger();
 
 	public BMSPlayerInputProcessor(Config config, PlayerConfig player) {
-		Resolution resolution = config.getResolution();
-		kbinput = new KeyBoardInputProcesseor(this, player.getMode14().getKeyboardConfig(), resolution);
+		kbinput = new KeyBoardInputProcesseor(this, player.getMode14().getKeyboardConfig(), config);
 		// Gdx.input.setInputProcessor(kbinput);
 		Array<BMControllerInputProcessor> bminput = new Array<BMControllerInputProcessor>();
 		for (Controller controller : Controllers.getControllers()) {

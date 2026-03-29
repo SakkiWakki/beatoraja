@@ -131,7 +131,10 @@ public class SongInformationAccessor extends SQLiteDatabaseAccessor {
 	}
 
 	public void update(BMSModel model) {
-		SongInformation info = new SongInformation(model);
+		update(new SongInformation(model));
+	}
+
+	public void update(SongInformation info) {
 		try {
 			insert(qr, conn, "information", info);
 		} catch (SQLException e) {
@@ -152,6 +155,25 @@ public class SongInformationAccessor extends SQLiteDatabaseAccessor {
 						e1.printStackTrace();
 					}
 				}
+				conn = null;
+			}
+		}
+	}
+
+	public void rollbackUpdate() {
+		if (conn != null) {
+			try {
+				conn.rollback();
+				conn.close();
+			} catch (SQLException e) {
+				if (conn != null) {
+					try {
+						conn.close();
+					} catch (SQLException e1) {
+						e1.printStackTrace();
+					}
+				}
+			} finally {
 				conn = null;
 			}
 		}

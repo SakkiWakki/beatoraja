@@ -7,6 +7,49 @@ package bms.player.beatoraja.song;
  */
 public interface SongDatabaseAccessor {
 
+	public static enum SongDatabaseImportPhase {
+		SCANNING,
+		PARSING,
+		WRITING,
+		COMPLETE,
+		FAILED
+	}
+
+	public static final class SongDatabaseImportProgress {
+		private final SongDatabaseImportPhase phase;
+		private final int processedSongs;
+		private final int totalSongs;
+		private final String message;
+
+		public SongDatabaseImportProgress(SongDatabaseImportPhase phase, int processedSongs, int totalSongs, String message) {
+			this.phase = phase;
+			this.processedSongs = processedSongs;
+			this.totalSongs = totalSongs;
+			this.message = message;
+		}
+
+		public SongDatabaseImportPhase getPhase() {
+			return phase;
+		}
+
+		public int getProcessedSongs() {
+			return processedSongs;
+		}
+
+		public int getTotalSongs() {
+			return totalSongs;
+		}
+
+		public String getMessage() {
+			return message;
+		}
+	}
+
+	@FunctionalInterface
+	public static interface SongDatabaseImportListener {
+		public void onProgress(SongDatabaseImportProgress progress);
+	}
+
 	/**
 	 * 楽曲を取得する
 	 * 
@@ -66,5 +109,10 @@ public interface SongDatabaseAccessor {
 	 *            更新の必要がないものも更新するかどうか
 	 */
 	public void updateSongDatas(String updatepath, String[] bmsroot, boolean updateAll, SongInformationAccessor info);
+
+	public default void updateSongDatas(String updatepath, String[] bmsroot, boolean updateAll,
+			SongInformationAccessor info, SongDatabaseImportListener listener) {
+		updateSongDatas(updatepath, bmsroot, updateAll, info);
+	}
 
 }

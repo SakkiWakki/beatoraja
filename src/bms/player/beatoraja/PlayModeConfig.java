@@ -180,7 +180,7 @@ public final class PlayModeConfig {
         /**
          * マウス皿設定
          */
-        private final MouseScratchConfig mouseScratchConfig;
+        private MouseScratchConfig mouseScratchConfig;
 
         private int[] keys;
 

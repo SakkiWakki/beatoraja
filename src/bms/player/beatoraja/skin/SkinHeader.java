@@ -68,6 +68,10 @@ public class SkinHeader {
 	private Resolution sourceResolution;
 	
 	private Resolution destinationResolution;
+
+	private int destinationWidth;
+
+	private int destinationHeight;
 	
 	public SkinType getSkinType() {
 		return mode;
@@ -234,6 +238,21 @@ public class SkinHeader {
 
 	public void setDestinationResolution(Resolution destinationResolution) {
 		this.destinationResolution = destinationResolution;
+	}
+
+	public int getDestinationWidth() {
+		return destinationWidth > 0 ? destinationWidth
+				: (destinationResolution != null ? destinationResolution.width : resolution.width);
+	}
+
+	public int getDestinationHeight() {
+		return destinationHeight > 0 ? destinationHeight
+				: (destinationResolution != null ? destinationResolution.height : resolution.height);
+	}
+
+	public void setDestinationSize(int destinationWidth, int destinationHeight) {
+		this.destinationWidth = destinationWidth;
+		this.destinationHeight = destinationHeight;
 	}
 
 	/**

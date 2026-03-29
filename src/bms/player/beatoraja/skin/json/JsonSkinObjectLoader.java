@@ -389,9 +389,9 @@ public abstract class JsonSkinObjectLoader<S extends Skin> {
 			if (dst.id.equals(text.id)) {
 				if (text.ref == SkinProperty.STRING_SEARCHWORD) {
 					JsonSkin.Animation a = dst.dst[0];
-					Rectangle r = new Rectangle(a.x * ((float)loader.dstr.width / sk.w),
-							a.y * ((float)loader.dstr.height / sk.h), a.w * ((float)loader.dstr.width / sk.w),
-							a.h * ((float)loader.dstr.height / sk.h));
+					Rectangle r = new Rectangle(a.x * ((float)loader.getDestinationWidth() / sk.w),
+							a.y * ((float)loader.getDestinationHeight() / sk.h), a.w * ((float)loader.getDestinationWidth() / sk.w),
+							a.h * ((float)loader.getDestinationHeight() / sk.h));
 					((MusicSelectSkin) skin).setSearchTextRegion(r);
 				} else {
 					obj = createText(text, p);
@@ -408,17 +408,17 @@ public abstract class JsonSkinObjectLoader<S extends Skin> {
 					if(img.value != null) {
 						obj = new SkinSlider(getSourceImage(tex, img.x, img.y, img.w, img.h, img.divx, img.divy),
 								img.timer, img.cycle, img.angle, (int) ((img.angle == 1 || img.angle == 3
-										? ((float)loader.dstr.width / sk.w) : ((float)loader.dstr.height / sk.h)) * img.range),
+										? ((float)loader.getDestinationWidth() / sk.w) : ((float)loader.getDestinationHeight() / sk.h)) * img.range),
 								img.value, img.event);
 					} else if(img.isRefNum) {
 						obj = new SkinSlider(getSourceImage(tex, img.x, img.y, img.w, img.h, img.divx, img.divy),
 								img.timer, img.cycle, img.angle, (int) ((img.angle == 1 || img.angle == 3
-										? ((float)loader.dstr.width / sk.w) : ((float)loader.dstr.height / sk.h)) * img.range),
+										? ((float)loader.getDestinationWidth() / sk.w) : ((float)loader.getDestinationHeight() / sk.h)) * img.range),
 								img.type, img.min, img.max);
 					} else {
 						obj = new SkinSlider(getSourceImage(tex, img.x, img.y, img.w, img.h, img.divx, img.divy),
 								img.timer, img.cycle, img.angle, (int) ((img.angle == 1 || img.angle == 3
-										? ((float)loader.dstr.width / sk.w) : ((float)loader.dstr.height / sk.h)) * img.range),
+										? ((float)loader.getDestinationWidth() / sk.w) : ((float)loader.getDestinationHeight() / sk.h)) * img.range),
 								img.type, img.changeable);
 					}
 				}
@@ -654,7 +654,7 @@ public abstract class JsonSkinObjectLoader<S extends Skin> {
 						source.setType(font.type);
 						loader.bitmapSourceMap.put(font.id, source);
 					}
-					skinText = new SkinTextBitmap(loader.bitmapSourceMap.get(font.id), text.size * ((float)loader.dstr.width / loader.sk.w), property);
+					skinText = new SkinTextBitmap(loader.bitmapSourceMap.get(font.id), text.size * ((float)loader.getDestinationWidth() / loader.sk.w), property);
 				} else {
 					skinText = new SkinTextFont(path.toString(), 0, text.size, 0, property);
 				}

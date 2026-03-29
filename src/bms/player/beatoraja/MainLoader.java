@@ -1,6 +1,5 @@
 package bms.player.beatoraja;
 
-import java.io.*;
 import java.net.URL;
 import java.nio.file.*;
 import java.util.*;
@@ -13,18 +12,16 @@ import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Graphics;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import javafx.application.Application;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Scene;
-import javafx.scene.layout.VBox;
 
-import com.badlogic.gdx.backends.lwjgl.LwjglApplication;
-import com.badlogic.gdx.backends.lwjgl.LwjglApplicationConfiguration;
+import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
+import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
+
+import org.lwjgl.glfw.GLFW;
 
 import bms.player.beatoraja.AudioConfig.DriverType;
 import bms.player.beatoraja.ir.IRConnectionManager;
-import bms.player.beatoraja.launcher.PlayConfigurationView;
-import bms.player.beatoraja.song.SQLiteSongDatabaseAccessor;
+import bms.player.beatoraja.launcher.gdx.LauncherApp;
+import bms.player.beatoraja.song.NoSqlSongDatabaseAccessor;
 import bms.player.beatoraja.song.SongData;
 import bms.player.beatoraja.song.SongDatabaseAccessor;
 import bms.player.beatoraja.song.SongUtils;
@@ -34,7 +31,7 @@ import bms.player.beatoraja.song.SongUtils;
  *
  * @author exch
  */
-public class MainLoader extends Application {
+public class MainLoader {
 
 	private static final boolean ALLOWS_32BIT_JAVA = false;
 
@@ -47,6 +44,7 @@ public class MainLoader extends Application {
 	private static VersionChecker version;
 
 	public static void main(String[] args) {
+		initGlfwPlatform();
 
 		if(!ALLOWS_32BIT_JAVA && !System.getProperty( "os.arch" ).contains( "64")) {
 			JOptionPane.showMessageDialog(null, "This Application needs 64bit-Java.", "Error", JOptionPane.ERROR_MESSAGE);
@@ -98,7 +96,7 @@ public class MainLoader extends Application {
 			IRConnectionManager.getAllAvailableIRConnectionName();
 			play(bmsPath, auto, true, null, null, bmsPath != null);
 		} else {
-			launch(args);
+			openLauncher();
 		}
 	}
 
@@ -118,38 +116,41 @@ public class MainLoader extends Application {
 		try {
 			final MainController main = new MainController(f, config, player, auto, songUpdated);
 
-			LwjglApplicationConfiguration cfg = new LwjglApplicationConfiguration();
-			cfg.width = config.getResolution().width;
-			cfg.height = config.getResolution().height;
+			Lwjgl3ApplicationConfiguration cfg = new Lwjgl3ApplicationConfiguration();
+			cfg.setWindowedMode(getWindowWidth(config), getWindowHeight(config));
+			cfg.setResizable(config.getDisplaymode() != Config.DisplayMode.FULLSCREEN);
 
 			// fullscreen
 			switch (config.getDisplaymode()) {
 				case FULLSCREEN:
-					cfg.fullscreen = true;
+					Graphics.DisplayMode desktop = Lwjgl3ApplicationConfiguration.getDisplayMode();
+					for (Graphics.DisplayMode display : Lwjgl3ApplicationConfiguration.getDisplayModes()) {
+						if (display.width == config.getResolution().width && display.height == config.getResolution().height) {
+							desktop = display;
+							break;
+						}
+					}
+					cfg.setFullscreenMode(desktop);
 					break;
 				case BORDERLESS:
-					System.setProperty("org.lwjgl.opengl.Window.undecorated", "true");
-					cfg.fullscreen = false;
+					Graphics.DisplayMode borderless = Lwjgl3ApplicationConfiguration.getDisplayMode();
+					cfg.setDecorated(false);
+					cfg.setWindowedMode(borderless.width, borderless.height);
 					break;
 				case WINDOW:
-					cfg.fullscreen = false;
+					cfg.setDecorated(true);
+					cfg.setWindowedMode(getWindowWidth(config), getWindowHeight(config));
 					break;
 			}
 			// vSync
-			cfg.vSyncEnabled = config.isVsync();
-			cfg.backgroundFPS = config.getMaxFramePerSecond();
-			cfg.foregroundFPS = config.getMaxFramePerSecond();
-			cfg.title = MainController.getVersion();
-
-			cfg.audioDeviceBufferSize = config.getAudioConfig().getDeviceBufferSize();
-			cfg.audioDeviceSimultaneousSources = config.getAudioConfig().getDeviceSimultaneousSources();
-			cfg.forceExit = forceExit;
+			cfg.useVsync(config.isVsync());
+			cfg.setIdleFPS(config.getMaxFramePerSecond());
+			cfg.setTitle(MainController.getVersion());
+			cfg.setAudioConfig(config.getAudioConfig().getDeviceSimultaneousSources(), config.getAudioConfig().getDeviceBufferSize(), 9);
 			if(config.getAudioConfig().getDriver() != DriverType.OpenAL) {
-				LwjglApplicationConfiguration.disableAudio = true;
+				cfg.disableAudio(true);
 			}
-			// System.setProperty("org.lwjgl.opengl.Display.allowSoftwareOpenGL",
-			// "true");
-			new LwjglApplication(new ApplicationListener() {
+			new Lwjgl3Application(new ApplicationListener() {
 				
 				public void resume() {
 					main.resume();
@@ -175,50 +176,29 @@ public class MainLoader extends Application {
 					main.create();
 				}
 			}, cfg);
-
-//			Lwjgl3ApplicationConfiguration cfg = new Lwjgl3ApplicationConfiguration();
-//
-//			final int w = (int) RESOLUTION[config.getResolution()].width;
-//			final int h = (int) RESOLUTION[config.getResolution()].height;
-//			if (config.isFullscreen()) {
-//				DisplayMode d = null;
-//				for (DisplayMode display : cfg.getDisplayModes()) {
-//					System.out.println("available DisplayMode : w - " + display.width + " h - " + display.height
-//							+ " refresh - " + display.refreshRate + " color bit - " + display.bitsPerPixel);
-//					if (display.width == w
-//							&& display.height == h
-//							&& (d == null || (d.refreshRate <= display.refreshRate && d.bitsPerPixel <= display.bitsPerPixel))) {
-//						d = display;
-//					}
-//				}
-//				if (d != null) {
-//					cfg.setFullscreenMode(d);
-//				} else {
-//					cfg.setWindowedMode(w, h);
-//				}
-//			} else {
-//				cfg.setWindowedMode(w, h);
-//			}
-//			// vSync
-//			cfg.useVsync(config.isVsync());
-//			cfg.setIdleFPS(config.getMaxFramePerSecond());
-//			cfg.setTitle(VERSION);
-//
-//			cfg.setAudioConfig(config.getAudioDeviceSimultaneousSources(), config.getAudioDeviceBufferSize(), 1);
-//
-//			new Lwjgl3Application(main, cfg);
+			if (forceExit) {
+				System.exit(0);
+			}
 		} catch (Throwable e) {
 			e.printStackTrace();
 			Logger.getGlobal().severe(e.getClass().getName() + " : " + e.getMessage());
 		}
 	}
 
+	private static int getWindowWidth(Config config) {
+		return config.isUseResolution() ? config.getResolution().width : config.getWindowWidth();
+	}
+
+	private static int getWindowHeight(Config config) {
+		return config.isUseResolution() ? config.getResolution().height : config.getWindowHeight();
+	}
+
 	public static Graphics.DisplayMode[] getAvailableDisplayMode() {
-		return LwjglApplicationConfiguration.getDisplayModes();
+		return Lwjgl3ApplicationConfiguration.getDisplayModes();
 	}
 
 	public static Graphics.DisplayMode getDesktopDisplayMode() {
-		return LwjglApplicationConfiguration.getDesktopDisplayMode();
+		return Lwjgl3ApplicationConfiguration.getDisplayMode();
 	}
 
 	public static SongDatabaseAccessor getScoreDatabaseAccessor() {
@@ -226,7 +206,7 @@ public class MainLoader extends Application {
 			try {
 				Config config = Config.read();
 				Class.forName("org.sqlite.JDBC");
-				songdb = new SQLiteSongDatabaseAccessor(config.getSongpath(), config.getBmsroot());
+				songdb = new NoSqlSongDatabaseAccessor(config.getSongpath(), config.getBmsroot());
 			} catch (ClassNotFoundException e) {
 				e.printStackTrace();
 			}
@@ -263,31 +243,66 @@ public class MainLoader extends Application {
 		return illegalSongs.size();
 	}
 
-	@Override
-	public void start(javafx.stage.Stage primaryStage) throws Exception {
-		Config config = Config.read();
-
+	/**
+	 * Set GLFW platform hints before glfwInit(). Must be called before any
+	 * Lwjgl3Application is created. On Wayland, this selects the Wayland
+	 * backend with libdecor disabled (falls back to xdg-decoration).
+	 */
+	private static void initGlfwPlatform() {
 		try {
-//			final long t = System.currentTimeMillis();
-			ResourceBundle bundle = ResourceBundle.getBundle("resources.UIResources");
-			FXMLLoader loader = new FXMLLoader(
-					MainLoader.class.getResource("/bms/player/beatoraja/launcher/PlayConfigurationView.fxml"), bundle);
-			VBox stackPane = (VBox) loader.load();
-			PlayConfigurationView bmsinfo = (PlayConfigurationView) loader.getController();
-			bmsinfo.setBMSInformationLoader(this);
-			bmsinfo.update(config);
-			Scene scene = new Scene(stackPane, stackPane.getPrefWidth(), stackPane.getPrefHeight());
-			primaryStage.setScene(scene);
-			primaryStage.setTitle(MainController.getVersion() + " configuration");
-			primaryStage.setOnCloseRequest((event) -> {
-				bmsinfo.exit();
-			});
-			primaryStage.show();
-//			Logger.getGlobal().info("初期化時間(ms) : " + (System.currentTimeMillis() - t));
+			if (GLFW.glfwPlatformSupported(GLFW.GLFW_PLATFORM_WAYLAND)) {
+				GLFW.glfwInitHint(GLFW.GLFW_PLATFORM, GLFW.GLFW_PLATFORM_WAYLAND);
+				GLFW.glfwInitHint(GLFW.GLFW_WAYLAND_LIBDECOR, GLFW.GLFW_WAYLAND_DISABLE_LIBDECOR);
+			}
+		} catch (Throwable e) {
+			Logger.getGlobal().warning("GLFW platform hint failed: " + e.getMessage());
+		}
+	}
 
-		} catch (IOException e) {
-			Logger.getGlobal().severe(e.getMessage());
-			e.printStackTrace();
+	public static void openLauncher() {
+		Config config = Config.read();
+		String[] playerIds = PlayerConfig.readAllPlayerID(config.getPlayerpath());
+		PlayerConfig player;
+		if (playerIds.length > 0) {
+			player = PlayerConfig.readPlayerConfig(config.getPlayerpath(), playerIds[0]);
+		} else {
+			player = new PlayerConfig();
+		}
+
+		// Track whether Start was pressed (as opposed to Exit)
+		final boolean[] startRequested = {false};
+
+		Lwjgl3ApplicationConfiguration cfg = new Lwjgl3ApplicationConfiguration();
+		cfg.setOpenGLEmulation(Lwjgl3ApplicationConfiguration.GLEmulation.GL30, 3, 2);
+		cfg.setDecorated(true);
+		// Use a conservative default size. On Wayland, GLFW monitor APIs return
+		// physical pixels but setWindowedMode expects logical coordinates
+		// (glfw/glfw#2527), so querying the monitor size and using it directly
+		// creates an oversized window on scaled displays. A fixed 800x600
+		// is safe on all configurations.
+		cfg.setWindowedMode(800, 600);
+		cfg.setResizable(true);
+		cfg.setTitle(MainController.getVersion() + " configuration");
+
+		LauncherApp app = new LauncherApp(config, player,
+				() -> {
+					// Start button: flag for game launch, then close launcher
+					startRequested[0] = true;
+					com.badlogic.gdx.Gdx.app.exit();
+				},
+				() -> {
+					// Exit button
+					com.badlogic.gdx.Gdx.app.exit();
+				});
+
+		// Lwjgl3Application blocks until the window is closed
+		new Lwjgl3Application(app, cfg);
+
+		// After launcher window closes, start game if requested
+		if (startRequested[0]) {
+			play(bmsPath, BMSPlayerMode.PLAY, true, config, player, app.isSongUpdated());
+		} else {
+			System.exit(0);
 		}
 	}
 

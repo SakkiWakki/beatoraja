@@ -1,4 +1,5 @@
 /build/*
+/release/*
 /player/*
 /skin/*
 !/skin/default/
@@ -13,9 +14,17 @@ config.json
 config_sys.json
 beatoraja.jar
 beatoraja_log.xml
+beatoraja_log.xml.lck
 /bin/
 b.bat
 /*.dll
 *.cim
+*.db-journal
+*.db-wal
+*.db-shm
+*.nosql/
+.vscode/
 .idea/
 .DS_Store
+/.gradle
+hs_err_pid*.log

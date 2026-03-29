@@ -1,0 +1,187 @@
+plugins {
+    id 'java'
+    id 'jacoco'
+
+    id 'com.gradleup.shadow' version '8.3.6'
+}
+
+group = 'bms.player'
+version = '0.5.4'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(26)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+def gdxVersion = '1.14.0'
+def lwjglVersion = '3.4.1'
+def controllersVersion = '2.2.4'
+
+def localLibs = fileTree(dir: 'lib', include: ['*.jar'], exclude: [
+    'jbms-parser.jar',
+    'gdx-backend-lwjgl.jar', 'gdx-backend-lwjgl-natives.jar',
+    'gdx.jar', 'gdx-natives.jar',
+    'gdx-freetype.jar', 'gdx-freetype-natives.jar',
+    'gdx-controllers.jar', 'gdx-controllers-desktop.jar', 'gdx-controllers-desktop-natives.jar',
+])
+
+configurations.configureEach {
+    resolutionStrategy {
+        failOnVersionConflict()
+        force "com.badlogicgames.gdx:gdx:${gdxVersion}"
+        force "org.lwjgl:lwjgl:${lwjglVersion}"
+        force "org.lwjgl:lwjgl-glfw:${lwjglVersion}"
+        force "org.lwjgl:lwjgl-jemalloc:${lwjglVersion}"
+        force "org.lwjgl:lwjgl-openal:${lwjglVersion}"
+        force "org.lwjgl:lwjgl-opengl:${lwjglVersion}"
+        force "org.lwjgl:lwjgl-stb:${lwjglVersion}"
+    }
+}
+
+dependencies {
+    implementation localLibs
+
+    // libGDX core + desktop backend
+    implementation "com.badlogicgames.gdx:gdx:${gdxVersion}"
+    implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:${gdxVersion}"
+    implementation "com.badlogicgames.gdx:gdx-platform:${gdxVersion}:natives-desktop"
+
+    // FreeType font rendering
+    implementation "com.badlogicgames.gdx:gdx-freetype:${gdxVersion}"
+    implementation "com.badlogicgames.gdx:gdx-freetype-platform:${gdxVersion}:natives-desktop"
+
+    // Controller support (v2)
+    implementation "com.badlogicgames.gdx-controllers:gdx-controllers-core:${controllersVersion}"
+    implementation "com.badlogicgames.gdx-controllers:gdx-controllers-desktop:${controllersVersion}"
+
+    // LWJGL natives (overridden to 3.4.1 for Wayland + JDK 26 support)
+    runtimeOnly "org.lwjgl:lwjgl:${lwjglVersion}:natives-linux"
+    runtimeOnly "org.lwjgl:lwjgl-glfw:${lwjglVersion}:natives-linux"
+    runtimeOnly "org.lwjgl:lwjgl-jemalloc:${lwjglVersion}:natives-linux"
+    runtimeOnly "org.lwjgl:lwjgl-openal:${lwjglVersion}:natives-linux"
+    runtimeOnly "org.lwjgl:lwjgl-opengl:${lwjglVersion}:natives-linux"
+    runtimeOnly "org.lwjgl:lwjgl-stb:${lwjglVersion}:natives-linux"
+    runtimeOnly "org.lwjgl:lwjgl-egl:${lwjglVersion}"
+
+    // Present in source imports but not vendored in lib/.
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.18.3'
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.18.3'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.3'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.12.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.12.2'
+}
+
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src', 'vendor/jbms-parser/src']
+            exclude 'test/**'
+        }
+        resources {
+            srcDirs = ['src']
+            exclude '**/*.java'
+            exclude 'test/**'
+        }
+    }
+    test {
+        java {
+            srcDirs = ['src/test/java']
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 26
+}
+
+tasks.named('jar') {
+    manifest {
+        attributes(
+            'Main-Class': 'bms.player.beatoraja.MainLoader',
+            'Class-Path': '.'
+        )
+    }
+}
+
+tasks.named('shadowJar') {
+    archiveBaseName = 'beatoraja'
+    archiveClassifier = ''
+    archiveVersion = ''
+    mergeServiceFiles()
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes(
+            'Main-Class': 'bms.player.beatoraja.MainLoader',
+            'Class-Path': '.'
+        )
+    }
+}
+
+tasks.named('build') {
+    dependsOn tasks.named('shadowJar')
+}
+
+
+tasks.named('test') {
+    useJUnitPlatform()
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    finalizedBy tasks.named('jacocoTestReport')
+}
+
+tasks.named('jacocoTestReport') {
+    dependsOn tasks.named('test')
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+tasks.register('parserProfile', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'bms.player.beatoraja.song.ParserProfileMain'
+    if (project.hasProperty('profileJfrFile')) {
+        jvmArgs("-XX:StartFlightRecording=filename=${project.property('profileJfrFile')},settings=profile")
+    }
+}
+
+tasks.register('linuxRelease', Sync) {
+    dependsOn tasks.named('shadowJar')
+
+    into layout.buildDirectory.dir('release/linux')
+
+    from('folder') {
+        into 'folder'
+    }
+    from('manual') {
+        into 'manual'
+    }
+    from('natives') {
+        into 'natives'
+    }
+    from('skin/default') {
+        into 'skin/default'
+    }
+    from('beatoraja-config.command')
+
+    from(tasks.named('shadowJar')) {
+        rename { 'beatoraja.jar' }
+    }
+}
+
+tasks.register('linuxDistZip', Zip) {
+    dependsOn tasks.named('linuxRelease')
+
+    archiveBaseName = 'beatoraja'
+    archiveVersion = "${project.version}_linux"
+    destinationDirectory = layout.buildDirectory.dir('distributions')
+    from(layout.buildDirectory.dir('release/linux'))
+}

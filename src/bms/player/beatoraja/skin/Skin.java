@@ -101,11 +101,10 @@ public class Skin {
 	public Skin(SkinHeader header) {
 		this.header = header;
 		Resolution org = header.getSourceResolution();
-		Resolution dst = header.getDestinationResolution();
-		width = dst.width;
-		height = dst.height;
-		dw = ((float)dst.width) / org.width;
-		dh = ((float)dst.height) / org.height;
+		width = header.getDestinationWidth();
+		height = header.getDestinationHeight();
+		dw = width / org.width;
+		dh = height / org.height;
 
 		if(MainController.debug) {
 			tempmap = new HashMap<>(32);

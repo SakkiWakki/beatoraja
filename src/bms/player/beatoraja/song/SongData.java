@@ -126,11 +126,19 @@ public class SongData implements Validatable, IpfsInformation {
 	}
 	
 	public SongData(BMSModel model, boolean containstxt) {
+		this(model, containstxt, true);
+	}
+
+	public SongData(BMSModel model, boolean containstxt, boolean computeInformation) {
 		content = containstxt ? CONTENT_TEXT : 0;
-		setBMSModel(model);
+		setBMSModel(model, computeInformation);
 	}
 
 	public void setBMSModel(BMSModel model) {
+		setBMSModel(model, true);
+	}
+
+	public void setBMSModel(BMSModel model, boolean computeInformation) {
 		if(model == null) {
 			return;
 		}
@@ -164,8 +172,12 @@ public class SongData implements Validatable, IpfsInformation {
 		minbpm = (int) model.getMinBPM();
 		maxbpm = (int) model.getMaxBPM();
 		feature = 0;
+		final TimeLine[] modelTimelines = model.getAllTimeLines();
+		timelines = modelTimelines;
 		final int keys = model.getMode().key;
-		for (TimeLine tl : model.getAllTimeLines()) {
+		final int lntype = model.getLntype();
+		int totalNotes = 0;
+		for (TimeLine tl : modelTimelines) {
 			if(tl.getStop() > 0) {
 				feature |= FEATURE_STOPSEQUENCE;
 			}
@@ -174,8 +186,10 @@ public class SongData implements Validatable, IpfsInformation {
 			}
 
 			for(int i = 0;i < keys;i++) {
-				if(tl.getNote(i) instanceof LongNote) {
-					switch(((LongNote) tl.getNote(i)).getType()) {
+				final Note note = tl.getNote(i);
+				if(note instanceof LongNote) {
+					final LongNote longNote = (LongNote) note;
+					switch(longNote.getType()) {
 						case LongNote.TYPE_UNDEFINED:
 							feature |= FEATURE_UNDEFINEDLN;
 							break;
@@ -189,25 +203,32 @@ public class SongData implements Validatable, IpfsInformation {
 							feature |= FEATURE_HELLCHARGENOTE;
 							break;
 					}
+					if (longNote.getType() == LongNote.TYPE_CHARGENOTE
+							|| longNote.getType() == LongNote.TYPE_HELLCHARGENOTE
+							|| (longNote.getType() == LongNote.TYPE_UNDEFINED && lntype != BMSModel.LNTYPE_LONGNOTE)
+							|| !longNote.isEnd()) {
+						totalNotes++;
+					}
 				}
-				if(tl.getNote(i) instanceof MineNote) {
+				if(note instanceof MineNote) {
 					feature |= FEATURE_MINENOTE;
+				} else if (note instanceof NormalNote) {
+					totalNotes++;
 				}
 			}
 		}
 		length = model.getLastTime();
-		notes = model.getTotalNotes();
-
-		timelines = model.getAllTimeLines();
+		notes = totalNotes;
 
 		feature |= model.getRandom() != null && model.getRandom().length > 0 ? FEATURE_RANDOM : 0;
 		content |= model.getBgaList().length > 0 ? CONTENT_BGA : 0;
 		content |= length >= 30000 && model.getWavList().length <= (length / (50 * 1000)) + 3 ? CONTENT_NOKEYSOUND : 0;
 		
-		info = new SongInformation(model);
+		info = computeInformation ? new SongInformation(model) : null;
 		try {
 			MessageDigest md = MessageDigest.getInstance("SHA-256");
-			charthash = BMSDecoder.convertHexString(md.digest(model.toChartString().getBytes()));
+			model.updateChartDigest(md);
+			charthash = BMSDecoder.convertHexString(md.digest());
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
 		}

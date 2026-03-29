@@ -1,0 +1,2 @@
+Upstream: https://github.com/exch-bms2/jbms-parser
+Commit: ca7b666c7446d2775fc539f652b493f778de50a5

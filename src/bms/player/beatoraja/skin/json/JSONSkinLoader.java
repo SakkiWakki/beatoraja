@@ -25,6 +25,8 @@ import bms.player.beatoraja.skin.lua.SkinLuaAccessor;
 public class JSONSkinLoader extends SkinLoader {
 
 	protected Resolution dstr;
+	protected int dstWidth;
+	protected int dstHeight;
 	protected boolean usecim;
 	protected int bgaExpand = -1;
 
@@ -59,6 +61,8 @@ public class JSONSkinLoader extends SkinLoader {
 	public JSONSkinLoader(SkinLuaAccessor lua) {
 		this.lua = lua;
 		dstr = HD;
+		dstWidth = dstr.width;
+		dstHeight = dstr.height;
 		usecim = false;
 	}
 
@@ -74,10 +78,20 @@ public class JSONSkinLoader extends SkinLoader {
 	public JSONSkinLoader(MainState state, Config c, SkinLuaAccessor lua) {
 		this.lua = lua;
 		dstr = c.getResolution();
+		dstWidth = c.getUiWidth();
+		dstHeight = c.getUiHeight();
 		usecim = false;
 		bgaExpand = c.getBgaExpand();
 		lua.exportMainStateAccessor(state);
 		lua.exportUtilities(state);
+	}
+
+	public int getDestinationWidth() {
+		return dstWidth;
+	}
+
+	public int getDestinationHeight() {
+		return dstHeight;
 	}
 
 	public Skin loadSkin(Path p, SkinType type, SkinConfig.Property property) {
@@ -303,6 +317,7 @@ public class JSONSkinLoader extends SkinLoader {
 			
 			header.setSourceResolution(src);
 			header.setDestinationResolution(dstr);
+			header.setDestinationSize(dstWidth, dstHeight);
 			skin = objectLoader.getSkin(header);
 			
 			IntIntMap op = new IntIntMap();

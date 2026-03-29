@@ -1,6 +1,5 @@
 package bms.player.beatoraja.select;
 
-import bms.player.beatoraja.Resolution;
 import bms.player.beatoraja.input.KeyBoardInputProcesseor.ControlKeys;
 import bms.player.beatoraja.select.bar.SearchWordBar;
 
@@ -46,8 +45,8 @@ public class SearchTextField extends Stage {
 	 */
 	private Group screen;
 
-	public SearchTextField(MusicSelector selector, Resolution resolution) {
-		super(new FitViewport(resolution.width, resolution.height));
+	public SearchTextField(MusicSelector selector, int width, int height) {
+		super(new FitViewport(width, height));
 
 		final Rectangle r = ((MusicSelectSkin) selector.getSkin()).getSearchTextRegion();
 
@@ -133,7 +132,7 @@ public class SearchTextField extends Stage {
 			});			
 
 			screen = new Group();
-			screen.setBounds(0, 0, resolution.width, resolution.height);
+			screen.setBounds(0, 0, width, height);
 			screen.addListener(new ClickListener() {
 				public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
 					if (getKeyboardFocus() != null && !r.contains(x, y)) {

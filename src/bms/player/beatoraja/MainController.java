@@ -5,8 +5,6 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.logging.Logger;
 
-import org.lwjgl.input.Mouse;
-
 import com.badlogic.gdx.*;
 import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.g2d.*;
@@ -14,7 +12,7 @@ import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator.FreeTypeFontParameter;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.utils.*;
-import com.badlogic.gdx.utils.StringBuilder;
+
 
 import bms.player.beatoraja.AudioConfig.DriverType;
 import bms.player.beatoraja.MainState.MainStateType;
@@ -114,6 +112,8 @@ public class MainController {
 	private MusicDownloadProcessor download;
 	
 	private StreamController streamController;
+	private Thread pollingThread;
+	private volatile boolean running = true;
 
 	public static final int offsetCount = SkinProperty.OFFSET_MAX + 1;
 	private final SkinOffset[] offset = new SkinOffset[offsetCount];
@@ -306,6 +306,7 @@ public class MainController {
 	public void create() {
 		final long t = System.currentTimeMillis();
 		sprite = new SpriteBatch();
+		sprite.getProjectionMatrix().setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		SkinLoader.initPixmapResourcePool(config.getSkinPixmapGen());
 
 		try {
@@ -354,9 +355,9 @@ public class MainController {
 
 		Logger.getGlobal().info("初期化時間(ms) : " + (System.currentTimeMillis() - t));
 
-		Thread polling = new Thread(() -> {
+		pollingThread = new Thread(() -> {
 			long time = 0;
-			for (;;) {
+			while (running) {
 				final long now = System.nanoTime() / 1000000;
 				if (time != now) {
 					time = now;
@@ -365,11 +366,14 @@ public class MainController {
 					try {
 						Thread.sleep(0, 500000);
 					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						break;
 					}
 				}
 			}
-		});
-		polling.start();
+		}, "beatoraja-input-poll");
+		pollingThread.setDaemon(true);
+		pollingThread.start();
 
 		Array<String> targetlist = new Array<String>(player.getTargetlist());
 		for(int i = 0;i < rivals.getRivalCount();i++) {
@@ -522,7 +526,7 @@ public class MainController {
             	input.setMouseMoved(false);
             	mouseMovedTime = time;
 			}
-			Mouse.setGrabbed(current == bmsplayer && time > mouseMovedTime + 5000 && Mouse.isInsideWindow());
+			Gdx.input.setCursorCatched(current == bmsplayer && time > mouseMovedTime + 5000);
 
 			// FPS表示切替
             if (input.isActivated(KeyCommand.SHOW_FPS)) {
@@ -533,7 +537,9 @@ public class MainController {
                 boolean fullscreen = Gdx.graphics.isFullscreen();
                 Graphics.DisplayMode currentMode = Gdx.graphics.getDisplayMode();
                 if (fullscreen) {
-                    Gdx.graphics.setWindowedMode(currentMode.width, currentMode.height);
+                    Gdx.graphics.setWindowedMode(
+                            config.isUseResolution() ? config.getResolution().width : config.getWindowWidth(),
+                            config.isUseResolution() ? config.getResolution().height : config.getWindowHeight());
                 } else {
                     Gdx.graphics.setFullscreenMode(currentMode);
                 }
@@ -598,6 +604,11 @@ public class MainController {
 	}
 
 	public void dispose() {
+		running = false;
+		if (pollingThread != null) {
+			pollingThread.interrupt();
+			pollingThread = null;
+		}
 		saveConfig();
 
 		if (bmsplayer != null) {
@@ -640,6 +651,20 @@ public class MainController {
 	}
 
 	public void resize(int width, int height) {
+		if (!Gdx.graphics.isFullscreen() && config.getDisplaymode() == Config.DisplayMode.WINDOW) {
+			config.setWindowWidth(width);
+			config.setWindowHeight(height);
+			config.setUseResolution(false);
+		}
+		if (sprite != null) {
+			sprite.getProjectionMatrix().setToOrtho2D(0, 0, width, height);
+		}
+		if (current != null && current.getSkin() != null && current.getSkin().header.getSkinType() != null) {
+			current.loadSkin(current.getSkin().header.getSkinType());
+			if (current.getSkin() != null) {
+				current.getSkin().prepare(current);
+			}
+		}
 		current.resize(width, height);
 	}
 

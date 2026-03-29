@@ -193,13 +193,26 @@ public final class MusicSelector extends MainState {
 			if(search != null) {
 				search.dispose();
 			}
-			search = new SearchTextField(this, resource.getConfig().getResolution());
+			search = new SearchTextField(this, (int) getSkin().getWidth(), (int) getSkin().getHeight());
 			setStage(search);
 		}
 	}
 
 	public void prepare() {
 		preview.start(null);
+	}
+
+	@Override
+	public void resize(int width, int height) {
+		super.resize(width, height);
+		Rectangle searchRegion = ((MusicSelectSkin) getSkin()).getSearchTextRegion();
+		if (searchRegion != null) {
+			if (search != null) {
+				search.dispose();
+			}
+			search = new SearchTextField(this, (int) getSkin().getWidth(), (int) getSkin().getHeight());
+			setStage(search);
+		}
 	}
 
 	public void render() {

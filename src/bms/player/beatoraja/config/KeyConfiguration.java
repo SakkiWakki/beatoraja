@@ -101,6 +101,7 @@ public class KeyConfiguration extends MainState {
 			SkinHeader header = new SkinHeader();
 			header.setSourceResolution(Resolution.HD);
 			header.setDestinationResolution(main.getConfig().getResolution());
+			header.setDestinationSize(main.getConfig().getUiWidth(), main.getConfig().getUiHeight());
 			this.setSkin(new KeyConfigurationSkin(header));
 		}
 

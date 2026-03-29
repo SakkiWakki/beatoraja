@@ -68,6 +68,7 @@ public abstract class SkinLoader {
                 LR2SkinCSVLoader dloader = LR2SkinCSVLoader.getSkinLoader(skinType,  header.getResolution(), resource.getConfig());
                 header.setSourceResolution(dloader.src);
                 header.setDestinationResolution(dloader.dst);
+                header.setDestinationSize(resource.getConfig().getUiWidth(), resource.getConfig().getUiHeight());
                 Skin skin = dloader.loadSkin(state, header, loader.getOption());
                 SkinLoader.resource.disposeOld();
                 return skin;

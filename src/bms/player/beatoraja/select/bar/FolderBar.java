@@ -4,7 +4,11 @@ import bms.player.beatoraja.select.MusicSelector;
 import bms.player.beatoraja.song.*;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.nio.file.Paths;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -39,13 +43,10 @@ public class FolderBar extends DirectoryBar {
     @Override
     public Bar[] getChildren() {
         final SongDatabaseAccessor songdb = selector.getSongDatabase();
-        final SongData[] songs = songdb.getSongDatas("parent", crc);
-        if (songs.length > 0) {
-            return SongBar.toSongBarArray(songs);
-        }
-
         final String rootpath = Paths.get(".").toAbsolutePath().toString();
-        return Stream.of(songdb.getFolderDatas("parent", crc)).map(folder -> {
+        List<Bar> children = new ArrayList<>();
+
+        Stream.of(songdb.getFolderDatas("parent", crc)).map(folder -> {
             String path = folder.getPath();
             if (path.endsWith(String.valueOf(File.separatorChar))) {
                 path = path.substring(0, path.length() - 1);
@@ -53,7 +54,13 @@ public class FolderBar extends DirectoryBar {
 
             String ccrc = SongUtils.crc32(path, new String[0], rootpath);
             return new FolderBar(selector, folder, ccrc);
-        }).toArray(Bar[]::new);
+        }).forEach(children::add);
+
+        for (SongBar songBar : SongBar.toSongBarArray(songdb.getSongDatas("parent", crc))) {
+            children.add(songBar);
+        }
+
+        return children.toArray(Bar[]::new);
     }
 
     public void updateFolderStatus() {
@@ -63,7 +70,27 @@ public class FolderBar extends DirectoryBar {
             path = path.substring(0, path.length() - 1);
         }
         final String ccrc = SongUtils.crc32(path, new String[0], new File(".").getAbsolutePath());
+        updateFolderStatus(collectSongs(songdb, ccrc, new HashSet<>(), new ArrayList<>()).toArray(SongData.EMPTY));
+    }
 
-        updateFolderStatus(songdb.getSongDatas("parent", ccrc));
+    private List<SongData> collectSongs(SongDatabaseAccessor songdb, String currentCrc, Set<String> visitedFolders,
+            List<SongData> songs) {
+        if (!visitedFolders.add(currentCrc)) {
+            return songs;
+        }
+
+        for (SongData song : songdb.getSongDatas("parent", currentCrc)) {
+            songs.add(song);
+        }
+
+        final String rootpath = Paths.get(".").toAbsolutePath().toString();
+        for (FolderData child : songdb.getFolderDatas("parent", currentCrc)) {
+            String childPath = child.getPath();
+            if (childPath.endsWith(String.valueOf(File.separatorChar))) {
+                childPath = childPath.substring(0, childPath.length() - 1);
+            }
+            collectSongs(songdb, SongUtils.crc32(childPath, new String[0], rootpath), visitedFolders, songs);
+        }
+        return songs;
     }
 }

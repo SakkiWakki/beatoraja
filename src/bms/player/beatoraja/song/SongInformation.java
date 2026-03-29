@@ -83,42 +83,45 @@ public class SongInformation implements Validatable {
 	
 	public SongInformation(BMSModel model) {
 		sha256 = model.getSHA256();
-		n = BMSModelUtils.getTotalNotes(model, BMSModelUtils.TOTALNOTES_KEY);
-		ln = BMSModelUtils.getTotalNotes(model, BMSModelUtils.TOTALNOTES_LONG_KEY);
-		s = BMSModelUtils.getTotalNotes(model, BMSModelUtils.TOTALNOTES_SCRATCH);
-		ls = BMSModelUtils.getTotalNotes(model, BMSModelUtils.TOTALNOTES_LONG_SCRATCH);
 		total = model.getTotal();
-		
-		int[][] lanenotes = new int[model.getMode().key][3];
+
+		final Mode mode = model.getMode();
+		final int keys = mode.key;
+		final int lntype = model.getLntype();
+		final TimeLine[] tls = model.getAllTimeLines();
+		final int totalNotes = countTotalNotes(model, tls, lntype, mode);
+
+		int[][] lanenotes = new int[keys][3];
 		int[][] data = new int[model.getLastTime() / 1000 + 2][7];
 		int pos = 0;
-		int border = (int) (model.getTotalNotes() * (1.0 - 100.0 / model.getTotal()));
+		int border = (int) (totalNotes * (1.0 - 100.0 / model.getTotal()));
 		int borderpos = 0;
-		for (TimeLine tl : model.getAllTimeLines()) {
+		for (TimeLine tl : tls) {
 			if (tl.getTime() / 1000 != pos) {
 				pos = tl.getTime() / 1000;
 			}
-			for (int i = 0; i < model.getMode().key; i++) {
-				Note n = tl.getNote(i);
-				if (n != null) {
-					if(n instanceof LongNote && !((LongNote)n).isEnd()) {
-						for(int index = tl.getTime() / 1000;index <= ((LongNote)n).getPair().getTime() / 1000;index++) {
-							data[index][model.getMode().isScratchKey(i) ? 1 : 4]++;
+			for (int i = 0; i < keys; i++) {
+				Note note = tl.getNote(i);
+				if (note != null) {
+					final boolean scratch = mode.isScratchKey(i);
+					if(note instanceof LongNote && !((LongNote)note).isEnd()) {
+						for(int index = tl.getTime() / 1000;index <= ((LongNote)note).getPair().getTime() / 1000;index++) {
+							data[index][scratch ? 1 : 4]++;
 						}
 					}
 
-					if(!((model.getLnmode() == 1 || (model.getLnmode() == 0 && model.getLntype() == BMSModel.LNTYPE_LONGNOTE))
-							&& n instanceof LongNote && ((LongNote) n).isEnd())){
-						if (n instanceof NormalNote) {
-							data[tl.getTime() / 1000][model.getMode().isScratchKey(i) ? 2 : 5]++;
+					if(!((model.getLnmode() == 1 || (model.getLnmode() == 0 && lntype == BMSModel.LNTYPE_LONGNOTE))
+							&& note instanceof LongNote && ((LongNote) note).isEnd())){
+						if (note instanceof NormalNote) {
+							data[tl.getTime() / 1000][scratch ? 2 : 5]++;
 							lanenotes[i][0]++;
 						}
-						if (n instanceof LongNote) {
-							data[tl.getTime() / 1000][model.getMode().isScratchKey(i) ? 0 : 3]++;
-							data[tl.getTime() / 1000][model.getMode().isScratchKey(i) ? 1 : 4]--;
+						if (note instanceof LongNote) {
+							data[tl.getTime() / 1000][scratch ? 0 : 3]++;
+							data[tl.getTime() / 1000][scratch ? 1 : 4]--;
 							lanenotes[i][1]++;
 						}
-						if (n instanceof MineNote) {
+						if (note instanceof MineNote) {
 							data[tl.getTime() / 1000][6]++;
 							lanenotes[i][2]++;
 						}
@@ -132,7 +135,7 @@ public class SongInformation implements Validatable {
 			}
 		}
 
-		final int bd = model.getTotalNotes() / data.length / 4;
+		final int bd = totalNotes / data.length / 4;
 		density = 0;
 		peakdensity = 0;
 		int count = 0;
@@ -161,7 +164,6 @@ public class SongInformation implements Validatable {
 		Map<Double, Integer> bpmNoteCountMap = new HashMap<Double, Integer>();
 		double nowSpeed = model.getBpm();
 		speedList.add(new double[] {nowSpeed, 0.0});
-		final TimeLine[] tls = model.getAllTimeLines();
 		for (TimeLine tl : tls) {
 			int notecount = bpmNoteCountMap.containsKey(tl.getBPM()) ? bpmNoteCountMap.get(tl.getBPM()) : 0;
 			bpmNoteCountMap.put(tl.getBPM(), notecount + tl.getTotalNotes());
@@ -192,6 +194,42 @@ public class SongInformation implements Validatable {
 		
 		setLanenotesValues(lanenotes);
 
+	}
+
+	private int countTotalNotes(BMSModel model, TimeLine[] timelines, int lntype, Mode mode) {
+		int keyNotes = 0;
+		int longKeyNotes = 0;
+		int scratchNotes = 0;
+		int longScratchNotes = 0;
+		for (TimeLine timeline : timelines) {
+			for (int lane = 0; lane < mode.key; lane++) {
+				final Note note = timeline.getNote(lane);
+				if (note instanceof NormalNote) {
+					if (mode.isScratchKey(lane)) {
+						scratchNotes++;
+					} else {
+						keyNotes++;
+					}
+				} else if (note instanceof LongNote) {
+					final LongNote longNote = (LongNote) note;
+					if (longNote.getType() == LongNote.TYPE_CHARGENOTE
+							|| longNote.getType() == LongNote.TYPE_HELLCHARGENOTE
+							|| (longNote.getType() == LongNote.TYPE_UNDEFINED && lntype != BMSModel.LNTYPE_LONGNOTE)
+							|| !longNote.isEnd()) {
+						if (mode.isScratchKey(lane)) {
+							longScratchNotes++;
+						} else {
+							longKeyNotes++;
+						}
+					}
+				}
+			}
+		}
+		n = keyNotes;
+		ln = longKeyNotes;
+		s = scratchNotes;
+		ls = longScratchNotes;
+		return keyNotes + longKeyNotes + scratchNotes + longScratchNotes;
 	}
 	
 	public String getDistribution() {

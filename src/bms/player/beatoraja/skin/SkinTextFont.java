@@ -3,10 +3,15 @@ package bms.player.beatoraja.skin;
 import bms.player.beatoraja.skin.property.StringProperty;
 import bms.player.beatoraja.skin.property.StringPropertyFactory;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.logging.Logger;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
@@ -44,15 +49,58 @@ public final class SkinTextFont extends SkinText {
     public SkinTextFont(String fontpath, int cycle, int size, int shadow, StringProperty property) {
     	super(property);
     	try {
-            generator = new FreeTypeFontGenerator(Gdx.files.internal(fontpath));
+    		FileHandle fontFile = resolveFontFile(fontpath);
+    		Logger.getGlobal().info("SkinTextFont: loading " + fontFile.path() + " size=" + size);
+            // For .ttc (TrueType Collection) files, explicitly use face index 0
+            generator = fontFile.extension().equalsIgnoreCase("ttc")
+                    ? new FreeTypeFontGenerator(fontFile, 0)
+                    : new FreeTypeFontGenerator(fontFile);
             parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
             parameter.characters = "";
 //            this.setCycle(cycle);
             parameter.size = size;
-            setShadowOffset(new Vector2(shadow, shadow));    		
+            setShadowOffset(new Vector2(shadow, shadow));
     	} catch (GdxRuntimeException e) {
-    		Logger.getGlobal().warning("Skin Font読み込み失敗");
+    		Logger.getGlobal().warning("Skin Font読み込み失敗: " + fontpath + " - " + e.getMessage());
     	}
+    }
+
+    private static FileHandle resolveFontFile(String fontpath) {
+        FileHandle internal = Gdx.files.internal(fontpath);
+        if (internal.exists()) {
+            return internal;
+        }
+
+        FileHandle absolute = Gdx.files.absolute(fontpath);
+        if (absolute.exists()) {
+            return absolute;
+        }
+
+        for (String family : new String[]{"Noto Sans CJK JP", "Arial", "sans-serif"}) {
+            String matched = resolveFontConfigMatch(family);
+            if (matched != null) {
+                Logger.getGlobal().info("Using fallback skin font: " + matched);
+                return Gdx.files.absolute(matched);
+            }
+        }
+
+        return internal;
+    }
+
+    private static String resolveFontConfigMatch(String family) {
+        try {
+            Process process = new ProcessBuilder("fc-match", "-f", "%{file}\\n", family).start();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String match = reader.readLine();
+                process.waitFor();
+                if (match != null && !match.isBlank() && Files.isRegularFile(Paths.get(match))) {
+                    return match;
+                }
+            }
+        } catch (Exception e) {
+            Logger.getGlobal().fine("fc-match failed for " + family + ": " + e.getMessage());
+        }
+        return null;
     }
     
     public boolean validate() {
@@ -87,11 +135,14 @@ public final class SkinTextFont extends SkinText {
             font.dispose();
             font = null;
         }
-        
+
         try {
             parameter.characters = text;
             font = generator.generateFont(parameter);
-            layout = new GlyphLayout(font, "");        	
+            layout = new GlyphLayout(font, "");
+            Logger.getGlobal().fine("SkinTextFont.prepareText: '" + text.substring(0, Math.min(20, text.length()))
+                    + "' regions=" + font.getRegions().size
+                    + " texHandle=" + font.getRegion(0).getTexture().getTextureObjectHandle());
     	} catch (GdxRuntimeException e) {
     		Logger.getGlobal().warning("Font準備失敗 : " + text + " - " + e.getMessage());
     	}

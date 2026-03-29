@@ -283,6 +283,14 @@ public class Config implements Validatable {
 		this.windowHeight = height;
 	}
 
+	public int getUiWidth() {
+		return useResolution ? resolution.width : windowWidth;
+	}
+
+	public int getUiHeight() {
+		return useResolution ? resolution.height : windowHeight;
+	}
+
 	public int getFrameskip() {
 		return frameskip;
 	}

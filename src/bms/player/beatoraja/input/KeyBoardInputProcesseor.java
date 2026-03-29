@@ -2,8 +2,8 @@ package bms.player.beatoraja.input;
 
 import java.util.Arrays;
 
+import bms.player.beatoraja.Config;
 import bms.player.beatoraja.PlayModeConfig.KeyboardConfig;
-import bms.player.beatoraja.Resolution;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.utils.IntArray;
@@ -38,7 +38,7 @@ public class KeyBoardInputProcesseor extends BMSPlayerInputDevice implements Inp
 	/**
 	 * 画面の解像度。マウスの入力イベント処理で使用
 	 */
-	private Resolution resolution;
+	private final Config config;
 
 	/**
 	 * 各キーのon/off状態
@@ -57,11 +57,11 @@ public class KeyBoardInputProcesseor extends BMSPlayerInputDevice implements Inp
 	 */
 	private int duration;
 
-	public KeyBoardInputProcesseor(BMSPlayerInputProcessor bmsPlayerInputProcessor, KeyboardConfig config, Resolution resolution) {
+	public KeyBoardInputProcesseor(BMSPlayerInputProcessor bmsPlayerInputProcessor, KeyboardConfig config, Config appConfig) {
 		super(bmsPlayerInputProcessor, Type.KEYBOARD);
 		this.mouseScratchInput = new MouseScratchInput(bmsPlayerInputProcessor, this, config);
 		this.setConfig(config);
-		this.resolution = resolution;
+		this.config = appConfig;
 		
 		reserved = new IntArray();
 		Arrays.stream(ControlKeys.values()).forEach(keys -> reserved.add(keys.keycode));
@@ -174,17 +174,9 @@ public class KeyBoardInputProcesseor extends BMSPlayerInputDevice implements Inp
 
 	public boolean mouseMoved(int x, int y) {
 		this.bmsPlayerInputProcessor.setMouseMoved(true);
-		this.bmsPlayerInputProcessor.mousex = x * resolution.width / Gdx.graphics.getWidth();
-		this.bmsPlayerInputProcessor.mousey = resolution.height - y * resolution.height / Gdx.graphics.getHeight();
+		this.bmsPlayerInputProcessor.mousex = x * config.getUiWidth() / Gdx.graphics.getWidth();
+		this.bmsPlayerInputProcessor.mousey = config.getUiHeight() - y * config.getUiHeight() / Gdx.graphics.getHeight();
 		return false;
-	}
-
-	/**
-	 * 旧InputProcessorのメソッド
-	 * libGDX更新時に削除
-	 */
-	public boolean scrolled(int amount) {
-		return scrolled(0, amount);
 	}
 
 	public boolean scrolled(float amountX, float amountY) {
@@ -195,22 +187,26 @@ public class KeyBoardInputProcesseor extends BMSPlayerInputDevice implements Inp
 
 	public boolean touchDown(int x, int y, int point, int button) {
 		this.bmsPlayerInputProcessor.mousebutton = button;
-		this.bmsPlayerInputProcessor.mousex = x * resolution.width / Gdx.graphics.getWidth();
-		this.bmsPlayerInputProcessor.mousey = resolution.height - y * resolution.height
+		this.bmsPlayerInputProcessor.mousex = x * config.getUiWidth() / Gdx.graphics.getWidth();
+		this.bmsPlayerInputProcessor.mousey = config.getUiHeight() - y * config.getUiHeight()
 				/ Gdx.graphics.getHeight();
 		this.bmsPlayerInputProcessor.mousepressed = true;
 		return false;
 	}
 
 	public boolean touchDragged(int x, int y, int point) {
-		this.bmsPlayerInputProcessor.mousex = x * resolution.width / Gdx.graphics.getWidth();
-		this.bmsPlayerInputProcessor.mousey = resolution.height - y * resolution.height
+		this.bmsPlayerInputProcessor.mousex = x * config.getUiWidth() / Gdx.graphics.getWidth();
+		this.bmsPlayerInputProcessor.mousey = config.getUiHeight() - y * config.getUiHeight()
 				/ Gdx.graphics.getHeight();
 		this.bmsPlayerInputProcessor.mousedragged = true;
 		return false;
 	}
 
 	public boolean touchUp(int arg0, int arg1, int arg2, int arg3) {
+		return false;
+	}
+
+	public boolean touchCancelled(int screenX, int screenY, int pointer, int button) {
 		return false;
 	}
 

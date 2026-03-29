@@ -46,6 +46,8 @@ public abstract class LR2SkinCSVLoader<S extends Skin> extends LR2SkinLoader {
 	 * 描画サイズ
 	 */
 	public final Resolution dst;
+	public final int dstWidth;
+	public final int dstHeight;
 	boolean usecim;
 	String skinpath;
 
@@ -58,13 +60,15 @@ public abstract class LR2SkinCSVLoader<S extends Skin> extends LR2SkinLoader {
 	public LR2SkinCSVLoader(Resolution src, Config c) {
 		this.src = src;
 		this.dst = c.getResolution();
+		this.dstWidth = c.getUiWidth();
+		this.dstHeight = c.getUiHeight();
 		usecim = c.isCacheSkinImage();
 		skinpath = c.getSkinpath();
 
 		final float srcw = src.width;
 		final float srch = src.height;
-		final float dstw = dst.width;
-		final float dsth = dst.height;
+		final float dstw = dstWidth;
+		final float dsth = dstHeight;
 		
 		addCommandWord(CSVCommand.values());
 
