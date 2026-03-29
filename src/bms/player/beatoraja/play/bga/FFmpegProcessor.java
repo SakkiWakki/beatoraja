@@ -13,7 +13,6 @@ import org.bytedeco.javacv.FrameGrabber.Exception;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.Gdx2DPixmap;
 
 /**
  * ffmpegを使用した動画表示用クラス
@@ -95,7 +94,6 @@ public class FFmpegProcessor implements MovieProcessor {
 
 		private boolean eof = true;
 
-		private ByteBuffer pixelBuffer;
 		private Pixmap pixmap;
 		private volatile boolean textureUploadPending;
 
@@ -181,21 +179,19 @@ public class FFmpegProcessor implements MovieProcessor {
 							}
 						} else if (frame.image != null && frame.image[0] != null) {
 							ByteBuffer src = (ByteBuffer) frame.image[0];
-							int bytes = src.remaining();
-							if (pixelBuffer == null || pixelBuffer.capacity() < bytes) {
-								pixelBuffer = ByteBuffer.allocateDirect(bytes);
-							}
-							pixelBuffer.clear();
-							src.mark();
-							pixelBuffer.put(src);
-							src.reset();
-							pixelBuffer.flip();
+							int width = src.remaining() / frame.imageHeight / 3;
 
-							if (pixmap == null) {
-								final long[] nativeData = { 0, bytes / frame.imageHeight / 3, frame.imageHeight,
-										Gdx2DPixmap.GDX2D_FORMAT_RGB888 };
-								pixmap = new Pixmap(new Gdx2DPixmap(pixelBuffer, nativeData));
+							// Create a libGDX-owned Pixmap and copy frame data into it
+							if (pixmap == null || pixmap.getWidth() != width || pixmap.getHeight() != frame.imageHeight) {
+								if (pixmap != null) pixmap.dispose();
+								pixmap = new Pixmap(width, frame.imageHeight, Pixmap.Format.RGB888);
 							}
+							ByteBuffer dst = pixmap.getPixels();
+							dst.clear();
+							src.mark();
+							dst.put(src);
+							src.reset();
+							dst.flip();
 
 							if (!textureUploadPending) {
 								textureUploadPending = true;
@@ -245,7 +241,6 @@ public class FFmpegProcessor implements MovieProcessor {
 				pixmap.dispose();
 				pixmap = null;
 			}
-			pixelBuffer = null;
 			if (setVideoFrameNumber != null) {
 				try {
 					setVideoFrameNumber.invoke(grabber, 0);
