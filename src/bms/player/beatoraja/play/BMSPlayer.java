@@ -844,7 +844,7 @@ public class BMSPlayer extends MainState {
 		replay.player = main.getPlayerConfig().getName();
 		replay.sha256 = model.getSHA256();
 		replay.mode = config.getLnmode();
-		replay.date = Calendar.getInstance().getTimeInMillis() / 1000;
+		replay.date = java.time.Instant.now().getEpochSecond();
 		replay.keylog = main.getInputProcessor().getKeyInputLog();
 //		replay.pattern = playinfo.pattern;
 		replay.laneShufflePattern = playinfo.laneShufflePattern;

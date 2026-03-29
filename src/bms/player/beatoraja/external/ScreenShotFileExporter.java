@@ -11,8 +11,8 @@ import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.logging.Logger;
 
 import javax.imageio.ImageIO;
@@ -38,7 +38,7 @@ public class ScreenShotFileExporter implements ScreenShotExporter {
 
 	@Override
 	public boolean send(MainState currentState, byte[]  pixels) {
-		final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
+		final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
 		String stateName = "";
 		if(currentState instanceof MusicSelector) {
 			stateName = "_Music_Select";
@@ -77,7 +77,7 @@ public class ScreenShotFileExporter implements ScreenShotExporter {
 
 		Pixmap pixmap = new Pixmap(Gdx.graphics.getBackBufferWidth(), Gdx.graphics.getBackBufferHeight(), Pixmap.Format.RGBA8888);
 		try {
-			String path = "screenshot/" + sdf.format(Calendar.getInstance().getTime()) + stateName +".png";
+			String path = "screenshot/" + LocalDateTime.now().format(dtf) + stateName +".png";
 			BufferUtils.copy(pixels, 0, pixmap.getPixels(), pixels.length);
 			PixmapIO.writePNG(new FileHandle(path), pixmap);
 			Logger.getGlobal().info("スクリーンショット保存:" + path);

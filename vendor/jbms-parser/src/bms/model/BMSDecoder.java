@@ -271,7 +271,9 @@ public class BMSDecoder extends ChartDecoder {
 								log.add(new DecodeLog(WARNING, "小節に数字が定義されていません : " + line));
 							}
 						} else if (matchesReserveWord(line, "BPM")) {
-							if (line.charAt(4) == ' ') {
+							if (line.length() <= 4) {
+								log.add(new DecodeLog(WARNING, "#BPMに値が定義されていません : " + line));
+							} else if (line.charAt(4) == ' ') {
 								// BPMは小数点のケースがある(FREEDOM DiVE)
 								try {
 									final String arg = line.substring(5).trim();

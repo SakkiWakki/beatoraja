@@ -277,12 +277,7 @@ public class ScoreDatabaseAccessor extends SQLiteDatabaseAccessor {
 	public void setPlayerData(PlayerData pd) {
 		try (Connection con = qr.getDataSource().getConnection()) {
 			con.setAutoCommit(false);
-			Calendar cal = Calendar.getInstance(TimeZone.getDefault());
-			cal.set(Calendar.HOUR_OF_DAY, 0);
-			cal.set(Calendar.MINUTE, 0);
-			cal.set(Calendar.SECOND, 0);
-			cal.set(Calendar.MILLISECOND, 0);
-			long unixtime = cal.getTimeInMillis() / 1000L;
+			long unixtime = java.time.LocalDate.now().atStartOfDay(java.time.ZoneId.systemDefault()).toEpochSecond();
 			pd.setDate(unixtime);
 			this.insert(qr, con, "player", pd);
 			con.commit();

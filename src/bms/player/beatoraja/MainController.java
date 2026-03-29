@@ -2,6 +2,7 @@ package bms.player.beatoraja;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.logging.Logger;
 
@@ -55,7 +56,6 @@ public class MainController {
 	 * 起動時間
 	 */
 	private final long boottime = System.currentTimeMillis();
-	private final Calendar cl = Calendar.getInstance();
 	private long mouseMovedTime;
 
 	private BMSPlayer bmsplayer;
@@ -334,9 +334,6 @@ public class MainController {
 		case OpenAL:
 			audio = new GdxSoundDriver(config);
 			break;
-//		case AudioDevice:
-//			audio = new GdxAudioDeviceDriver(config);
-//			break;
 		}
 
 		resource = new PlayerResource(audio, config, player);
@@ -755,9 +752,8 @@ public class MainController {
 		return System.currentTimeMillis() - boottime;
 	}
 
-	public Calendar getCurrnetTime() {
-		cl.setTimeInMillis(System.currentTimeMillis());
-		return cl;
+	public LocalDateTime getCurrnetTime() {
+		return LocalDateTime.now();
 	}
 
 	public TimerManager getTimer() {

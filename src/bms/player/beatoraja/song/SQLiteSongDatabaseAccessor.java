@@ -346,7 +346,7 @@ public class SQLiteSongDatabaseAccessor extends SQLiteDatabaseAccessor implement
 		public void updateSongDatas(Stream<Path> paths) {
 			long time = System.currentTimeMillis();
 			SongDatabaseUpdaterProperty property = new SongDatabaseUpdaterProperty(
-					Calendar.getInstance().getTimeInMillis() / 1000, info, listener);
+					java.time.Instant.now().getEpochSecond(), info, listener);
 			property.count.set(0);
 			property.reportProgress(SongDatabaseImportPhase.SCANNING, 0, 0, "Scanning song folders...");
 			boolean success = false;

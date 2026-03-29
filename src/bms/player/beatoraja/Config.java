@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.logging.Logger;
 
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Json;
@@ -19,14 +20,7 @@ import com.badlogic.gdx.utils.JsonWriter.OutputType;
  */
 public class Config implements Validatable {
 	
-	/**
-	 * 旧コンフィグパス。そのうち削除
-	 */
-	static final Path configpath_old = Paths.get("config.json");
-	/**
-	 * コンフィグパス(UTF-8)
-	 */
-	static final Path configpath = Paths.get("config_sys.json");	
+	static final Path configpath = Paths.get("config_sys.json");
 
 	/**
 	 * 選択中のプレイヤー名
@@ -580,17 +574,8 @@ public class Config implements Validatable {
 			try (Reader reader = new InputStreamReader(new FileInputStream(configpath.toFile()), StandardCharsets.UTF_8)) {
 				config = json.fromJson(Config.class, reader);
 			} catch (Exception e) {
-				e.printStackTrace();
+				Logger.getGlobal().warning("Config読み込み失敗: " + e.getMessage());
 			}
-		} else if(Files.exists(configpath_old)) {
-			// 旧コンフィグ読み込み。そのうち削除
-			Json json = new Json();
-			json.setIgnoreUnknownFields(true);
-			try (FileReader reader = new FileReader(configpath_old.toFile())) {
-				config = json.fromJson(Config.class, reader);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}			
 		}
 		if(config == null) {
 			config = new Config();
@@ -610,7 +595,7 @@ public class Config implements Validatable {
 			writer.write(json.prettyPrint(config));
 			writer.flush();
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.getGlobal().warning("Config書き込み失敗: " + e.getMessage());
 		}
 	}
 

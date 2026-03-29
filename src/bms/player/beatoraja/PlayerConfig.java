@@ -26,14 +26,7 @@ import com.badlogic.gdx.utils.SerializationException;
  */
 public final class PlayerConfig {
 
-	/**
-	 * 旧コンフィグパス。そのうち削除
-	 */
-	static final Path configpath_old = Paths.get("config.json");
-	/**
-	 * コンフィグパス(UTF-8)
-	 */
-	static final Path configpath = Paths.get("config_player.json");	
+	static final Path configpath = Paths.get("config_player.json");
 
 	private String id;
     /**
@@ -961,30 +954,20 @@ public final class PlayerConfig {
 	public static PlayerConfig readPlayerConfig(String playerpath, String playerid) {
 		PlayerConfig player = new PlayerConfig();
 		final Path path = Paths.get(playerpath + "/" + playerid + "/" + configpath);
-		final Path path_old = Paths.get(playerpath + "/" + playerid + "/" + configpath_old);
 		if (Files.exists(path)) {
 			try (Reader reader = new InputStreamReader(new FileInputStream(path.toFile()), StandardCharsets.UTF_8)) {
 				Json json = new Json();
 				json.setIgnoreUnknownFields(true);
 				player = json.fromJson(PlayerConfig.class, reader);
 			} catch (SerializationException e) {
-				Logger.getGlobal().warning("PlayerConfigの読み込み失敗 - Path : " + path.toString() + " , Log : " + e.getMessage());
+				Logger.getGlobal().warning("PlayerConfigの読み込み失敗 - Path : " + path + " , Log : " + e.getMessage());
 				try {
 					Files.copy(path, Paths.get(playerpath + "/" + playerid + "/config_backup.json"));
 				} catch (IOException e1) {
-//					e1.printStackTrace();
+					Logger.getGlobal().warning("PlayerConfigバックアップ失敗: " + e1.getMessage());
 				}
 			} catch(Throwable e) {
-				e.printStackTrace();
-			}			
-		} else if(Files.exists(path_old)) {
-			// 旧コンフィグ読み込み。そのうち削除
-			try (FileReader reader = new FileReader(path_old.toFile())) {
-				Json json = new Json();
-				json.setIgnoreUnknownFields(true);
-				player = json.fromJson(PlayerConfig.class, reader);
-			} catch(Throwable e) {
-				e.printStackTrace();
+				Logger.getGlobal().warning("PlayerConfig読み込みエラー: " + e.getMessage());
 			}
 		}
 		player.setId(playerid);
@@ -1001,7 +984,7 @@ public final class PlayerConfig {
 			writer.write(json.prettyPrint(player));
 			writer.flush();
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.getGlobal().warning("PlayerConfig書き込み失敗: " + e.getMessage());
 		}
 	}
 

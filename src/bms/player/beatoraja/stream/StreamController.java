@@ -1,8 +1,10 @@
 package bms.player.beatoraja.stream;
 
 import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.logging.Logger;
 
 import bms.player.beatoraja.MessageRenderer;
@@ -14,6 +16,8 @@ import bms.player.beatoraja.stream.command.StreamRequestCommand;
  * beatoraja パイプで受け取った文字列処理
  */
 public class StreamController {
+    private static final Logger logger = Logger.getGlobal();
+
     StreamCommand[] commands;
     BufferedReader pipeBuffer;
     Thread polling;
@@ -26,10 +30,11 @@ public class StreamController {
         this.notifier = notifier;
         commands = new StreamCommand[] { new StreamRequestCommand(this.selector, this.notifier) };
         try {
-            pipeBuffer = new BufferedReader(new FileReader("\\\\.\\pipe\\beatoraja"));
+            Path pipePath = Paths.get("\\\\.\\pipe\\beatoraja");
+            pipeBuffer = Files.newBufferedReader(pipePath);
             isActive = true;
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.warning("パイプ接続失敗: " + e.getMessage());
             dispose();
         }
     }
@@ -40,60 +45,46 @@ public class StreamController {
         }
         polling = new Thread(() -> {
             try {
-                String line = null;
+                String line;
                 while (!Thread.interrupted()) {
-                    try {
-                        line = pipeBuffer.readLine();
-                        if (line == null) {
-                            break;
-                        }
-                        Logger.getGlobal().info("受信:" + line);
-                        execute(line);
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                    line = pipeBuffer.readLine();
+                    if (line == null) {
+                        break;
                     }
+                    logger.info("受信:" + line);
+                    execute(line);
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.warning("パイプ読み込みエラー: " + e.getMessage());
             }
         });
-
-        try {
-            while (!pipeBuffer.ready());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
         polling.start();
     }
 
     public void dispose() {
         if (polling != null) {
-            try {
-                polling.interrupt();
-                polling = null;
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            polling.interrupt();
+            polling = null;
         }
         if (pipeBuffer != null) {
             try {
                 pipeBuffer.close();
-            } catch (Exception e) {
-                e.printStackTrace();
+            } catch (IOException e) {
+                logger.warning("パイプクローズ失敗: " + e.getMessage());
             }
         }
-        for(int i = 0; i < commands.length; i++) {
-            commands[i].dispose();
+        for (StreamCommand command : commands) {
+            command.dispose();
         }
-        Logger.getGlobal().info("パイプリソース破棄完了");
+        logger.info("パイプリソース破棄完了");
     }
 
     private void execute(String line) {
-        for(int i = 0; i < commands.length; i++) {
-            String cmd = commands[i].COMMAND_STRING + " ";
+        for (StreamCommand command : commands) {
+            String cmd = command.COMMAND_STRING + " ";
             String[] splitLine = line.split(cmd);
             String data = splitLine.length == 2 ? splitLine[1] : "";
-            commands[i].run(data);
+            command.run(data);
         }
     }
 

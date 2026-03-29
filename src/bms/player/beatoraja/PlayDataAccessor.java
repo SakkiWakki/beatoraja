@@ -259,7 +259,7 @@ public final class PlayDataAccessor {
 		score.setTrophy(sb.toString());
 
 		score.setPlaycount(score.getPlaycount() + 1);
-		score.setDate(Calendar.getInstance(TimeZone.getDefault()).getTimeInMillis() / 1000L);
+		score.setDate(java.time.Instant.now().getEpochSecond());
 		score.setScorehash(getScoreHash(score));
 		scoredb.setScoreData(score);
 		if (log.getSha256() != null && scorelogdb != null) {
@@ -419,7 +419,7 @@ public final class PlayDataAccessor {
 		ScoreLog log = updateScore(score, newscore, hash, updateScore);
 
 		score.setPlaycount(score.getPlaycount() + 1);
-		score.setDate(Calendar.getInstance(TimeZone.getDefault()).getTimeInMillis() / 1000L);
+		score.setDate(java.time.Instant.now().getEpochSecond());
 		score.setScorehash(getScoreHash(score));
 		scoredb.setScoreData(score);
 		if (log.getSha256() != null && scorelogdb != null) {

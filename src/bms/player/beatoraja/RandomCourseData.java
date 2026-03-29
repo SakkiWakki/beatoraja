@@ -2,8 +2,9 @@ package bms.player.beatoraja;
 
 import bms.player.beatoraja.song.SongData;
 
-import java.io.File;
-import java.text.SimpleDateFormat;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
@@ -73,8 +74,8 @@ public class RandomCourseData {
 
 	public CourseData createCourseData() {
 		CourseData courseData = new CourseData();
-		final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
-		courseData.setName(name + " " + sdf.format(new Date()));
+		final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
+		courseData.setName(name + " " + LocalDateTime.now().format(dtf));
 		courseData.setSong(songDatas);
 		courseData.setConstraint(constraint);
 		courseData.setTrophy(trophy);
@@ -102,8 +103,8 @@ public class RandomCourseData {
 					sql = "1";
 				}
 			}
-			lots = main.getSongDatabase().getSongDatas(sql ,main.getConfig().getPlayerpath() + File.separatorChar + main.getConfig().getPlayername() + "/score.db"
-					,main.getConfig().getPlayerpath() + File.separatorChar + main.getConfig().getPlayername() + "/scorelog.db",main.getInfoDatabase() != null ? "songinfo.db" : null);
+			lots = main.getSongDatabase().getSongDatas(sql, Paths.get(main.getConfig().getPlayerpath(), main.getConfig().getPlayername(), "score.db").toString(),
+					Paths.get(main.getConfig().getPlayerpath(), main.getConfig().getPlayername(), "scorelog.db").toString(), main.getInfoDatabase() != null ? "songinfo.db" : null);
 			lotterySongData(i, songDatas, lots, isDistinct);
 		}
 	}
@@ -118,7 +119,7 @@ public class RandomCourseData {
 		}
 
 		// 曲を抽選し、以前のステージと曲が重複したら再抽選する。再抽選できなくなったら重複を許容する。
-		List<SongData> tempLots = new ArrayList(Arrays.asList(lots));
+		List<SongData> tempLots = new ArrayList<>(Arrays.asList(lots));
 		while (tempLots.size() > 0) {
 			int ri = random.nextInt(tempLots.size());
 			songDatas[i] = tempLots.get(ri);
