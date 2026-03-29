@@ -59,20 +59,29 @@ public class PixmapResourcePool extends ResourcePool<String, Pixmap> {
 		}
 
 		try {
+			com.badlogic.gdx.files.FileHandle fh = f.isAbsolute() ? Gdx.files.absolute(path) : Gdx.files.internal(path);
 			if(path.endsWith(".cim")) {
-				tex = PixmapIO.readCIM(Gdx.files.internal(path));
+				tex = PixmapIO.readCIM(fh);
 			} else {
-				tex = new Pixmap(Gdx.files.internal(path));				
+				tex = new Pixmap(fh);
 			}
 		} catch (Throwable e) {
 			Logger.getGlobal().warning("BGAファイル読み込み失敗。" + e.getMessage());
 		}
 		if (tex == null) {
+			String lower = path.toLowerCase(java.util.Locale.ROOT);
+			if (lower.endsWith(".wmv") || lower.endsWith(".avi") || lower.endsWith(".flv")) {
+				// Video formats cannot be loaded as images — skip retry
+				return null;
+			}
 			Logger.getGlobal().warning("BGAファイル読み込み再試行:" + path);
 			try {
 				// TODO 一部のbmsはImageIO.readで失敗する(e.g. past glow)。別の画像デコーダーが必要
 				BufferedImage bi = ImageIO.read(f);
-//						System.out.println("width : " + bi.getWidth() + " height : " + bi.getHeight() + " type : " + bi.getType());
+				if (bi == null) {
+					Logger.getGlobal().warning("BGAファイル読み込み失敗。ImageIO returned null for: " + path);
+					return null;
+				}
 				tex = new Pixmap(bi.getWidth(), bi.getHeight(), Pixmap.Format.RGBA8888);
 				for(int x = 0;x < bi.getWidth();x++) {
 					for(int y = 0;y < bi.getHeight();y++) {
