@@ -700,8 +700,20 @@ public class MainController {
 	}
 
 	public void saveConfig(){
-		Config.write(config);
-		PlayerConfig.write(config.getPlayerpath(), player);
+		saveSettings(SettingType.SYSTEM, SettingType.PLAYER);
+	}
+
+	public void saveSettings(SettingType... types) {
+		for (SettingType type : types) {
+			switch (type) {
+				case SYSTEM:
+					Config.write(config);
+					break;
+				case PLAYER:
+					PlayerConfig.write(config.getPlayerpath(), player);
+					break;
+			}
+		}
 		Logger.getGlobal().info("設定情報を保存");
 	}
 

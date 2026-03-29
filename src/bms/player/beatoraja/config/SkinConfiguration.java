@@ -2,6 +2,7 @@ package bms.player.beatoraja.config;
 
 import bms.player.beatoraja.MainController;
 import bms.player.beatoraja.MainState;
+import bms.player.beatoraja.SettingType;
 import static bms.player.beatoraja.skin.SkinProperty.*;
 
 import bms.player.beatoraja.PlayerConfig;
@@ -56,7 +57,7 @@ public class SkinConfiguration extends MainState {
 	public void render() {
 
 		if (main.getInputProcessor().isControlKeyPressed(ControlKeys.ESCAPE)) {
-			main.saveConfig();
+			main.saveSettings(SettingType.PLAYER);
 			main.changeState(MainStateType.MUSICSELECT);
 		}
 	}
@@ -110,6 +111,7 @@ public class SkinConfiguration extends MainState {
 			} else {
 				setPrevSkin();
 			}
+			main.saveSettings(SettingType.PLAYER);
 			break;
 		default:
 			if (SkinPropertyMapper.isSkinCustomizeButton(id)) {
@@ -129,10 +131,12 @@ public class SkinConfiguration extends MainState {
 							item.setValue(item.getMax());
 						}
 					}
+					main.saveSettings(SettingType.PLAYER);
 				}
 			} else if (SkinPropertyMapper.isSkinSelectTypeId(id)) {
 				SkinType t = SkinPropertyMapper.getSkinSelectType(id);
 				changeSkinType(t);
+				main.saveSettings(SettingType.PLAYER);
 			} else {
 				super.executeEvent(id, arg1, arg2);
 			}

@@ -149,25 +149,26 @@ public class KeyConfiguration extends MainState {
 		if (keyinput) {
 			if (keyinput && input.getKeyBoardInputProcesseor().getLastPressedKey() != -1) {
 				setKeyboardKeyAssign(keysa[cursorpos]);
-				// System.out.println(input.getKeyBoardInputProcesseor().getLastPressedKey());
 				keyinput = false;
+				main.saveSettings(SettingType.PLAYER);
 			}
 			if (keyinput && input.getKeyBoardInputProcesseor().getMouseScratchInput().getLastMouseScratch() != -1) {
 				setMouseScratchKeyAssign(keysa[cursorpos], input.getKeyBoardInputProcesseor());
-				// System.out.println(input.getKeyBoardInputProcesseor().getLastMouseScratch());
 				keyinput = false;
+				main.saveSettings(SettingType.PLAYER);
 			}
 			for (BMControllerInputProcessor bmc : controllers) {
 				if (keyinput && bmc.getLastPressedButton() != -1) {
 					setControllerKeyAssign(keysa[cursorpos], bmc);
-					// System.out.println(bmc.getLastPressedButton());
 					keyinput = false;
+					main.saveSettings(SettingType.PLAYER);
 					break;
 				}
 			}
 			if (keyinput && midiinput.hasLastPressedKey()) {
 				setMidiKeyAssign(keysa[cursorpos]);
 				keyinput = false;
+				main.saveSettings(SettingType.PLAYER);
 			}
 			if (input.isControlKeyPressed(ControlKeys.DEL)) {
 				deletepressed = true;
@@ -241,12 +242,15 @@ public class KeyConfiguration extends MainState {
 			}
 
 			if (input.isControlKeyPressed(ControlKeys.ESCAPE)) {
-				main.saveConfig();
+				main.saveSettings(SettingType.PLAYER);
 				main.changeState(MainStateType.MUSICSELECT);
 			}
 
 			if (input.isControlKeyPressed(ControlKeys.DEL)) {
-				if(!deletepressed) deleteKeyAssign(keysa[cursorpos]);
+				if(!deletepressed) {
+					deleteKeyAssign(keysa[cursorpos]);
+					main.saveSettings(SettingType.PLAYER);
+				}
 				deletepressed = true;
 			} else deletepressed = false;
 		}
