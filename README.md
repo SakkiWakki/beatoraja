@@ -62,16 +62,5 @@ Command-line options:
 java -jar beatoraja.jar -(a|p|r1|r2|r3|r4|s) [BMS path]
 ```
 
-- `a` : autoplay
-- `p` : practice
-- `r1`-`r4` : start replay data 1-4
-- `s` : skip launcher, start game directly
-
-Without options, the launcher configuration window opens first.
-
-beatoraja uses a large amount of heap memory. `-Xms1g -Xmx4g` is recommended.
-
-**Don't use this application for playing copyrighted contents.**
-
 # License
 - GNU General Public License v3
