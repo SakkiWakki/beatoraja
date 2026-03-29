@@ -422,7 +422,7 @@ public class MainController {
 	private final StringBuilder message = new StringBuilder();
 
 	public void render() {
-//		input.poll();
+		input.refreshJoysticks();
 		timer.update();
 
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);

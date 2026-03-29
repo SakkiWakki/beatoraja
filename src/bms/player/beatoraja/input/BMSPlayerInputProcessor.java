@@ -3,16 +3,18 @@ package bms.player.beatoraja.input;
 import bms.player.beatoraja.*;
 
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
+
+import org.lwjgl.glfw.GLFW;
 
 import bms.player.beatoraja.PlayModeConfig.*;
 import bms.player.beatoraja.input.BMSPlayerInputDevice.Type;
 import bms.player.beatoraja.input.KeyBoardInputProcesseor.ControlKeys;
 
-import com.badlogic.gdx.controllers.Controller;
-import com.badlogic.gdx.controllers.Controllers;
 import com.badlogic.gdx.utils.Array;
 
 /**
@@ -32,33 +34,42 @@ public class BMSPlayerInputProcessor {
 	
 	private KeyLogger keylog = new KeyLogger();
 
+	private List<GlfwJoystickState> joystickStates = new ArrayList<>();
+
+	/** Package-private no-arg constructor for unit testing only. */
+	BMSPlayerInputProcessor() {
+		this.analogScroll = false;
+	}
+
 	public BMSPlayerInputProcessor(Config config, PlayerConfig player) {
 		kbinput = new KeyBoardInputProcesseor(this, player.getMode14().getKeyboardConfig(), config);
-		// Gdx.input.setInputProcessor(kbinput);
 		Array<BMControllerInputProcessor> bminput = new Array<BMControllerInputProcessor>();
-		for (Controller controller : Controllers.getControllers()) {
-			Logger.getGlobal().info("コントローラーを検出 : " + controller.getName());
-			// FIXME:前回終了時のModeからコントローラ設定を復元
+		for (int jid = GLFW.GLFW_JOYSTICK_1; jid <= GLFW.GLFW_JOYSTICK_LAST; jid++) {
+			if (!GLFW.glfwJoystickPresent(jid)) continue;
+			String joyName = GLFW.glfwGetJoystickName(jid);
+			if (joyName == null) continue;
+			Logger.getGlobal().info("コントローラーを検出 : " + joyName);
 			ControllerConfig controllerConfig = Stream.of(player.getMode7().getController())
 				.filter(m -> {
 				    try {
-					return m.getName().equals(new String(controller.getName().getBytes("EUC_JP"), "UTF-8"));
+					return m.getName().equals(new String(joyName.getBytes("EUC_JP"), "UTF-8"));
 				    } catch (UnsupportedEncodingException e) {
 					return false;
 				    }
 				}).findFirst()
 				.orElse(new ControllerConfig());
-			// デバイス名のユニーク化
 			int index = 1;
-			String name = controller.getName();
+			String name = joyName;
 			for(BMControllerInputProcessor bm : bminput) {
 				if(bm.getName().equals(name)) {
 					index++;
-					name = controller.getName() + "-" + index;
+					name = joyName + "-" + index;
 				}
 			}
-			BMControllerInputProcessor bm = new BMControllerInputProcessor(this, name, controller, controllerConfig);
-			// controller.addListener(bm);
+			GlfwJoystickState state = new GlfwJoystickState(jid, joyName);
+			state.refresh();
+			joystickStates.add(state);
+			BMControllerInputProcessor bm = new BMControllerInputProcessor(this, name, state, controllerConfig);
 			bminput.add(bm);
 		}
 
@@ -73,7 +84,7 @@ public class BMSPlayerInputProcessor {
 			devices.add(bm);
 		}
 		devices.add(midiinput);
-		
+
 		this.analogScroll = config.isAnalogScroll();
 	}
 
@@ -492,6 +503,13 @@ public class BMSPlayerInputProcessor {
 
 	public void resetScroll() {
 		scrollX = scrollY = 0;
+	}
+
+	// Call from GL thread to snapshot GLFW joystick state before polling.
+	public void refreshJoysticks() {
+		for (GlfwJoystickState state : joystickStates) {
+			state.refresh();
+		}
 	}
 
 	public void poll() {

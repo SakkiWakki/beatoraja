@@ -4,7 +4,6 @@ package bms.player.beatoraja.input;
 import java.util.Arrays;
 
 import bms.player.beatoraja.PlayModeConfig.ControllerConfig;
-import com.badlogic.gdx.controllers.Controller;
 
 /**
  * 専用コントローラー入力処理用クラス
@@ -15,7 +14,7 @@ public class BMControllerInputProcessor extends BMSPlayerInputDevice {
 
 	// TODO アナログデバイスと設計(クラス)を分けたい
 
-	private final Controller controller;
+	private final JoystickState controller;
 	/**
 	 * デバイス名称
 	 */
@@ -79,7 +78,7 @@ public class BMControllerInputProcessor extends BMSPlayerInputDevice {
      */
     private static final float TICK_MAX_SIZE = 0.009f;
 
-	public BMControllerInputProcessor(BMSPlayerInputProcessor bmsPlayerInputProcessor, String name, Controller controller,
+	public BMControllerInputProcessor(BMSPlayerInputProcessor bmsPlayerInputProcessor, String name, JoystickState controller,
 									  ControllerConfig controllerConfig) {
 		super(bmsPlayerInputProcessor, Type.BM_CONTROLLER);
 		this.name = name;

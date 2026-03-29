@@ -20,14 +20,11 @@ repositories {
 
 def gdxVersion = '1.14.0'
 def lwjglVersion = '3.4.1'
-def controllersVersion = '2.2.4'
-
 def localLibs = fileTree(dir: 'lib', include: ['*.jar'], exclude: [
     'jbms-parser.jar',
     'gdx-backend-lwjgl.jar', 'gdx-backend-lwjgl-natives.jar',
     'gdx.jar', 'gdx-natives.jar',
     'gdx-freetype.jar', 'gdx-freetype-natives.jar',
-    'gdx-controllers.jar', 'gdx-controllers-desktop.jar', 'gdx-controllers-desktop-natives.jar',
 ])
 
 configurations.configureEach {
@@ -54,10 +51,6 @@ dependencies {
     // FreeType font rendering
     implementation "com.badlogicgames.gdx:gdx-freetype:${gdxVersion}"
     implementation "com.badlogicgames.gdx:gdx-freetype-platform:${gdxVersion}:natives-desktop"
-
-    // Controller support (v2)
-    implementation "com.badlogicgames.gdx-controllers:gdx-controllers-core:${controllersVersion}"
-    implementation "com.badlogicgames.gdx-controllers:gdx-controllers-desktop:${controllersVersion}"
 
     // LWJGL natives (overridden to 3.4.1 for Wayland + JDK 26 support)
     runtimeOnly "org.lwjgl:lwjgl:${lwjglVersion}:natives-linux"
