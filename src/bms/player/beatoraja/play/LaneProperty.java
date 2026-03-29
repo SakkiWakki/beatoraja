@@ -35,79 +35,66 @@ public class LaneProperty {
 	private final int[][] scratchToKey;
 
 	public LaneProperty(Mode mode) {
-		switch (mode) {
-		case BEAT_5K:
-			keyToLane = new int[] { 0, 1, 2, 3, 4, 5, 5 };
-			laneToKey = new int[][] { {0}, {1}, {2}, {3}, {4}, {5,6} };
-			laneToScratch = new int[] { -1, -1, -1, -1, -1, 0 };
-			laneToSkinOffset = new int[] { 1, 2, 3, 4, 5, 0 };
-			scratchToKey = new int[][] { {5,6} };
-			break;
-		case BEAT_7K:
-			keyToLane = new int[] { 0, 1, 2, 3, 4, 5, 6, 7, 7 };
-			laneToKey = new int[][] { {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7,8} };
-			laneToScratch = new int[] { -1, -1, -1, -1, -1, -1, -1, 0 };
-			laneToSkinOffset = new int[] { 1, 2, 3, 4, 5, 6, 7, 0 };
-			scratchToKey = new int[][] { {7,8} };
-			break;
-		case BEAT_10K:
-			keyToLane = new int[] { 0, 1, 2, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 11 };
-			laneToKey = new int[][] { {0}, {1}, {2}, {3}, {4}, {5,6}, {7}, {8}, {9}, {10}, {11}, {12,13} };
-			laneToScratch = new int[] { -1, -1, -1, -1, -1, 0, -1, -1, -1, -1, -1, 1 };
-			laneToSkinOffset = new int[] { 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0 };
-			scratchToKey = new int[][] { {5,6}, {12,13} };
-			break;
-		case BEAT_14K:
-			keyToLane = new int[] { 0, 1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15 };
-			laneToKey = new int[][] { {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7,8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16,17} };
-			laneToScratch = new int[] { -1, -1, -1, -1, -1, -1, -1, 0, -1, -1, -1, -1, -1, -1, -1, 1 };
-			laneToSkinOffset = new int[] { 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0 };
-			scratchToKey = new int[][] { {7,8}, {16,17} };
-			break;
-		case POPN_9K:
-			keyToLane = new int[] { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
-			laneToKey = new int[][] { {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8} };
-			laneToScratch = new int[] { -1, -1, -1, -1, -1, -1, -1, -1, -1 };
-			laneToSkinOffset = new int[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-			scratchToKey = new int[][] { };
-			break;
-		case KEYBOARD_24K:
-			keyToLane = new int[26];
-			laneToKey = new int[26][1];
-			laneToScratch = new int[26];
-			laneToSkinOffset = new int[26];
-			for (int i=0; i<26; i++) {
+		final int lanes = mode.key;
+		final int lanesPerPlayer = lanes / mode.player;
+		final int scratches = mode.scratchesPerPlayer;
+		final int regularPerPlayer = lanesPerPlayer - scratches;
+
+		if (scratches > 0) {
+			// BEAT-style: N regular keys + scratch lanes per player side.
+			// Each scratch lane maps 2 physical inputs to 1 lane.
+			int totalInputs = lanes + scratches * mode.player; // extra input per scratch
+			keyToLane = new int[totalInputs];
+			laneToKey = new int[lanes][];
+			laneToScratch = new int[lanes];
+			laneToSkinOffset = new int[lanes];
+			scratchToKey = new int[scratches * mode.player][2];
+
+			int inputIdx = 0;
+			int scratchIdx = 0;
+			for (int p = 0; p < mode.player; p++) {
+				int laneBase = p * lanesPerPlayer;
+				// Regular keys: 1 input -> 1 lane, skin offset 1..N
+				for (int i = 0; i < regularPerPlayer; i++) {
+					int lane = laneBase + i;
+					keyToLane[inputIdx] = lane;
+					laneToKey[lane] = new int[] { inputIdx };
+					laneToScratch[lane] = -1;
+					laneToSkinOffset[lane] = i + 1;
+					inputIdx++;
+				}
+				// Scratch lanes: 2 inputs -> 1 lane, skin offset 0
+				for (int s = 0; s < scratches; s++) {
+					int lane = laneBase + regularPerPlayer + s;
+					keyToLane[inputIdx] = lane;
+					keyToLane[inputIdx + 1] = lane;
+					laneToKey[lane] = new int[] { inputIdx, inputIdx + 1 };
+					laneToScratch[lane] = scratchIdx;
+					laneToSkinOffset[lane] = 0;
+					scratchToKey[scratchIdx] = new int[] { inputIdx, inputIdx + 1 };
+					scratchIdx++;
+					inputIdx += 2;
+				}
+			}
+		} else {
+			// POPN / KEYBOARD style: 1:1 input-to-lane mapping, no scratch.
+			keyToLane = new int[lanes];
+			laneToKey = new int[lanes][1];
+			laneToScratch = new int[lanes];
+			laneToSkinOffset = new int[lanes];
+			scratchToKey = new int[][] {};
+
+			for (int i = 0; i < lanes; i++) {
 				keyToLane[i] = i;
 				laneToKey[i][0] = i;
 				laneToScratch[i] = -1;
-				laneToSkinOffset[i] = i + 1;
+				laneToSkinOffset[i] = (i % lanesPerPlayer) + 1;
 			}
-			scratchToKey = new int[][] { };
-			break;
-		case KEYBOARD_24K_DOUBLE:
-			keyToLane = new int[52];
-			laneToKey = new int[52][1];
-			laneToScratch = new int[52];
-			laneToSkinOffset = new int[52];
-			for (int i=0; i<52; i++) {
-				keyToLane[i] = i;
-				laneToKey[i][0] = i;
-				laneToScratch[i] = -1;
-				laneToSkinOffset[i] = i % 26 + 1;
-			}
-			scratchToKey = new int[][] { };
-			break;
-		default:
-			keyToLane = new int[] { 0, 1, 2, 3, 4, 5, 6, 7, 7 };
-			laneToKey = new int[][] { {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7,8} };
-			laneToScratch = new int[] { -1, -1, -1, -1, -1, -1, -1, 0 };
-			laneToSkinOffset = new int[] { 1, 2, 3, 4, 5, 6, 7, 0 };
-			scratchToKey = new int[][] { {7,8} };
-			break;
 		}
-		laneToPlayer = new int[mode.key];
-		for(int i = 0; i < mode.key; i++) {
-			laneToPlayer[i] = i / (mode.key / mode.player);
+
+		laneToPlayer = new int[lanes];
+		for (int i = 0; i < lanes; i++) {
+			laneToPlayer[i] = i / lanesPerPlayer;
 		}
 	}
 
