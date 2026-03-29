@@ -536,6 +536,7 @@ enum CommandWord {
 	PLAYER ((model, arg) -> {
 		try {
 			final int player = Integer.parseInt(arg);
+			// 1-4 is valid where 3 is Double Play and 4 is Battle Play
 			if (player >= 1 && player <= 4) {
 				model.setPlayer(player);
 			} else {
