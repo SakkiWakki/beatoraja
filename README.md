@@ -1,5 +1,8 @@
 # beatoraja (Unofficial Fork)
 This project aims to improve the QoL of beatoraja, such as speeding up import times, saving behaviour, etc. 
+
+**This project is not compatiable with previous beatoraja installations**
+
 # TODO
 - [ ] Remake launcher with human hands to avoid clanker logic
 
