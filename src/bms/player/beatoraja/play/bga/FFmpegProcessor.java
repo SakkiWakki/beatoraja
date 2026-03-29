@@ -14,7 +14,6 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Gdx2DPixmap;
-import com.badlogic.gdx.utils.GdxRuntimeException;
 
 /**
  * ffmpegを使用した動画表示用クラス
@@ -28,24 +27,12 @@ public class FFmpegProcessor implements MovieProcessor {
 		DISPOSED,
 	}
 
-	/**
-	 * 現在表示中のフレームのTexture
-	 */
 	private Texture showingtex;
-	/**
-	 * 動画のフレーム表示率(1/n)
-	 */
-	private int fpsd = 1;
-	/**
-	 * 動画再生用スレッド
-	 */
+	private final int fpsd;
 	private MovieSeekThread movieseek;
 
-	private long time;
-	/**
-	 * dispose()を呼び出した後にprocessorDisposedはtrueになる
-	 */
-	private ProcessorStatus processorStatus = ProcessorStatus.TEXTURE_INACTIVE;
+	private volatile long time;
+	private volatile ProcessorStatus processorStatus = ProcessorStatus.TEXTURE_INACTIVE;
 
 	public FFmpegProcessor(int fpsd) {
 		this.fpsd = fpsd;
@@ -53,6 +40,7 @@ public class FFmpegProcessor implements MovieProcessor {
 
 	public void create(String filepath) {
 		movieseek = new MovieSeekThread(filepath);
+		movieseek.setDaemon(true);
 		movieseek.start();
 	}
 
@@ -61,11 +49,10 @@ public class FFmpegProcessor implements MovieProcessor {
 		this.time = time;
 		if (processorStatus == ProcessorStatus.TEXTURE_ACTIVE) {
 			return showingtex;
-		} else {
-			return null;
 		}
+		return null;
 	}
-	
+
 	public void play(long time, boolean loop) {
 		if (processorStatus == ProcessorStatus.DISPOSED) return;
 		this.time = time;
@@ -82,24 +69,18 @@ public class FFmpegProcessor implements MovieProcessor {
 		processorStatus = ProcessorStatus.DISPOSED;
 		if (movieseek != null) {
 			movieseek.exec(Command.HALT);
+			try {
+				movieseek.join(3000);
+			} catch (InterruptedException ignored) {
+			}
 			movieseek = null;
 		}
-
 		if (showingtex != null) {
 			showingtex.dispose();
 		}
 	}
 
-	/**
-	 * 動画再生用スレッド
-	 *
-	 * @author exch
-	 */
 	class MovieSeekThread extends Thread {
-		/**
-		 * FFmpegFrameGrabber::setVideoFrameNumber
-		 * 1.4.1以前のJavaCVには存在しない
-		 */
 		private static final Method setVideoFrameNumber;
 		static {
 			Method method = null;
@@ -109,21 +90,16 @@ public class FFmpegProcessor implements MovieProcessor {
 			setVideoFrameNumber = method;
 		}
 
-		/**
-		 * ffmpegアクセサ
-		 */
 		private FFmpegFrameGrabber grabber;
-		/**
-		 * コマンドキュー
-		 */
-		private LinkedBlockingDeque<Command> commands = new LinkedBlockingDeque<>(4);
+		private final LinkedBlockingDeque<Command> commands = new LinkedBlockingDeque<>(4);
 
 		private boolean eof = true;
 
+		private ByteBuffer pixelBuffer;
 		private Pixmap pixmap;
+		private volatile boolean textureUploadPending;
 
-		private String filepath;
-		
+		private final String filepath;
 		private long offset;
 		private long framecount;
 
@@ -162,7 +138,6 @@ public class FFmpegProcessor implements MovieProcessor {
 				boolean halt = false;
 				boolean loop = false;
 				while (!halt) {
-					// Process commands first so PLAY/STOP take effect immediately
 					if (!commands.isEmpty()) {
 						switch (commands.pollFirst()) {
 						case PLAY:
@@ -184,14 +159,15 @@ public class FFmpegProcessor implements MovieProcessor {
 
 					final long microtime = time * 1000 + offset;
 					if (eof) {
-						// Keep last frame visible — don't reset to TEXTURE_INACTIVE
 						try {
 							sleep(3600000);
 						} catch (InterruptedException e) {
-
 						}
 					} else if (microtime >= grabber.getTimestamp()) {
 						while (microtime >= grabber.getTimestamp() || framecount % fpsd != 0) {
+							if (processorStatus == ProcessorStatus.DISPOSED || !commands.isEmpty()) {
+								break;
+							}
 							frame = grabber.grabImage();
 							if (frame == null) {
 								break;
@@ -204,36 +180,45 @@ public class FFmpegProcessor implements MovieProcessor {
 								commands.offerLast(Command.LOOP);
 							}
 						} else if (frame.image != null && frame.image[0] != null) {
-							try {
-								if (pixmap == null) {
-									final long[] nativeData = { 0, frame.image[0].remaining() / frame.imageHeight / 3, frame.imageHeight,
-											Gdx2DPixmap.GDX2D_FORMAT_RGB888 };
-									pixmap = new Pixmap(new Gdx2DPixmap((ByteBuffer) frame.image[0], nativeData));
-								}
+							ByteBuffer src = (ByteBuffer) frame.image[0];
+							int bytes = src.remaining();
+							if (pixelBuffer == null || pixelBuffer.capacity() < bytes) {
+								pixelBuffer = ByteBuffer.allocateDirect(bytes);
+							}
+							pixelBuffer.clear();
+							src.mark();
+							pixelBuffer.put(src);
+							src.reset();
+							pixelBuffer.flip();
+
+							if (pixmap == null) {
+								final long[] nativeData = { 0, bytes / frame.imageHeight / 3, frame.imageHeight,
+										Gdx2DPixmap.GDX2D_FORMAT_RGB888 };
+								pixmap = new Pixmap(new Gdx2DPixmap(pixelBuffer, nativeData));
+							}
+
+							if (!textureUploadPending) {
+								textureUploadPending = true;
 								Gdx.app.postRunnable(() -> {
-									final Pixmap p = pixmap;
-									if (p == null || processorStatus == ProcessorStatus.DISPOSED) {
+									if (pixmap == null || processorStatus == ProcessorStatus.DISPOSED) {
+										textureUploadPending = false;
 										return;
 									}
 									if (showingtex != null) {
-										showingtex.draw(p, 0, 0);
+										showingtex.draw(pixmap, 0, 0);
 									} else {
-										showingtex = new Texture(p);
+										showingtex = new Texture(pixmap);
 									}
 									processorStatus = ProcessorStatus.TEXTURE_ACTIVE;
+									textureUploadPending = false;
 								});
-							} catch (Throwable e) {
-								throw new GdxRuntimeException("Couldn't load pixmap from image data", e);
 							}
 						}
 					} else {
 						final long sleeptime = (grabber.getTimestamp() - microtime) / 1000 - 1;
-						if (sleeptime > 0) {
-							try {
-								sleep(sleeptime);
-							} catch (InterruptedException e) {
-
-							}
+						try {
+							sleep(Math.max(1, sleeptime));
+						} catch (InterruptedException e) {
 						}
 					}
 				}
@@ -241,6 +226,10 @@ public class FFmpegProcessor implements MovieProcessor {
 				Logger.getGlobal().severe("動画再生スレッド例外 : " + filepath + " - " + e.getClass().getName() + ": " + e.getMessage());
 				e.printStackTrace();
 			} finally {
+				if (pixmap != null) {
+					pixmap.dispose();
+					pixmap = null;
+				}
 				try {
 					grabber.stop();
 					grabber.close();
@@ -250,9 +239,13 @@ public class FFmpegProcessor implements MovieProcessor {
 				}
 			}
 		}
-		
+
 		private void restart() throws Exception {
-			pixmap = null;
+			if (pixmap != null) {
+				pixmap.dispose();
+				pixmap = null;
+			}
+			pixelBuffer = null;
 			if (setVideoFrameNumber != null) {
 				try {
 					setVideoFrameNumber.invoke(grabber, 0);
@@ -267,7 +260,6 @@ public class FFmpegProcessor implements MovieProcessor {
 			eof = false;
 			offset = grabber.getTimestamp() - time * 1000;
 			framecount = 1;
-			// System.out.println("movie restart - starttime : " + start);
 		}
 
 		public void exec(Command com) {
@@ -278,10 +270,5 @@ public class FFmpegProcessor implements MovieProcessor {
 
 	enum Command {
 		PLAY, LOOP, STOP, HALT;
-	}
-	
-	public interface TimerObserver {
-		
-		public long getMicroTime();
 	}
 }
