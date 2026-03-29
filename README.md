@@ -11,8 +11,10 @@ Key changes from upstream:
 
 For the original project, see: https://github.com/exch-bms2/beatoraja
 
+On Wayland, you may have to manually resize. Note that there's a problem with OpenGL that causes fonts to become black rectangles after resizing. You can fix this by just traversing to another folder. 
+
 # AI Usage
-Claude was used for implementing my ideas for refactoring and optimization. 
+Claude was used for implementing my ideas for refactoring and optimization. Also generating coverage tests to ensure that the majority of the behaviour remains the same .
 
 ---
 
