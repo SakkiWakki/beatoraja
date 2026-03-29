@@ -25,7 +25,7 @@ import java.util.stream.Stream;
 
 public class NoSqlSongDatabaseAccessor implements SongDatabaseAccessor {
 
-	private static final int PARSE_BATCH_SIZE = Runtime.getRuntime().availableProcessors() * 4;
+	private static final int PARSE_BATCH_SIZE = Math.max(256, Runtime.getRuntime().availableProcessors() * 16);
 	private static final int SHARD_COUNT = 16;
 	private static final String STORE_VERSION = "nosql-v1";
 	private static final String SHARDS_DIR = "shards";
@@ -528,9 +528,9 @@ public class NoSqlSongDatabaseAccessor implements SongDatabaseAccessor {
 				// Process in batches with bounded concurrency to limit memory pressure
 				final int maxConcurrency = Runtime.getRuntime().availableProcessors();
 				final java.util.concurrent.Semaphore parseSemaphore = new java.util.concurrent.Semaphore(maxConcurrency);
-				for (int start = 0; start < property.songJobs.size(); start += PARSE_BATCH_SIZE) {
-					final int end = Math.min(start + PARSE_BATCH_SIZE, property.songJobs.size());
-					try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+				try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+					for (int start = 0; start < property.songJobs.size(); start += PARSE_BATCH_SIZE) {
+						final int end = Math.min(start + PARSE_BATCH_SIZE, property.songJobs.size());
 						List<Future<SongImportResult>> futures = property.songJobs.subList(start, end).stream()
 								.map(job -> executor.submit(() -> {
 									parseSemaphore.acquire();
@@ -810,11 +810,13 @@ public class NoSqlSongDatabaseAccessor implements SongDatabaseAccessor {
 	}
 
 	private void applyFinalChanges(UpdaterState property) {
-		for (String staleFolderPrefix : property.staleFolderPrefixes) {
+		if (!property.staleFolderPrefixes.isEmpty()) {
+			// Single pass per shard: check each path against all stale prefixes
+			String[] prefixes = property.staleFolderPrefixes.toArray(new String[0]);
 			for (Map<String, PersistedSong> shard : property.songShards) {
-				shard.keySet().removeIf(path -> path.startsWith(staleFolderPrefix));
+				shard.keySet().removeIf(path -> matchesAnyPrefix(path, prefixes));
 			}
-			property.foldersByPath.keySet().removeIf(path -> path.startsWith(staleFolderPrefix));
+			property.foldersByPath.keySet().removeIf(path -> matchesAnyPrefix(path, prefixes));
 		}
 		for (String staleSongPath : property.staleSongPaths) {
 			property.songShards.get(shardForPath(staleSongPath)).remove(staleSongPath);
@@ -822,6 +824,15 @@ public class NoSqlSongDatabaseAccessor implements SongDatabaseAccessor {
 		for (PersistedFolder folder : property.folderUpserts) {
 			property.foldersByPath.put(folder.path, folder);
 		}
+	}
+
+	private static boolean matchesAnyPrefix(String path, String[] prefixes) {
+		for (String prefix : prefixes) {
+			if (path.startsWith(prefix)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private int shardForPath(String path) {
@@ -953,24 +964,18 @@ public class NoSqlSongDatabaseAccessor implements SongDatabaseAccessor {
 		}
 
 		private void preloadExistingState() {
-			for (PersistedSong song : allSongs()) {
-				ExistingSongRecord record = new ExistingSongRecord(song.path, song.date, emptyIfNull(song.preview), song.sha256, song.folder);
-				songsByFolder.computeIfAbsent(record.folder, ignored -> new HashMap<String, ExistingSongRecord>())
-						.put(record.path, record);
+			for (Map<String, PersistedSong> shard : songShards) {
+				for (PersistedSong song : shard.values()) {
+					ExistingSongRecord record = new ExistingSongRecord(song.path, song.date, emptyIfNull(song.preview), song.sha256, song.folder);
+					songsByFolder.computeIfAbsent(record.folder, ignored -> new HashMap<String, ExistingSongRecord>())
+							.put(record.path, record);
+				}
 			}
 			for (PersistedFolder folder : foldersByPath.values()) {
 				ExistingFolderRecord record = new ExistingFolderRecord(folder.path, folder.parent, folder.date);
 				foldersByParent.computeIfAbsent(record.parent, ignored -> new HashMap<String, ExistingFolderRecord>())
 						.put(record.path, record);
 			}
-		}
-
-		private Iterable<PersistedSong> allSongs() {
-			List<PersistedSong> songs = new ArrayList<PersistedSong>();
-			for (Map<String, PersistedSong> shard : songShards) {
-				songs.addAll(shard.values());
-			}
-			return songs;
 		}
 
 		private Snapshot freeze() {
@@ -1080,12 +1085,8 @@ public class NoSqlSongDatabaseAccessor implements SongDatabaseAccessor {
 			return songShards.get(Math.floorMod(path.hashCode(), SHARD_COUNT)).get(path);
 		}
 
-		private List<PersistedSong> allSongs() {
-			List<PersistedSong> songs = new ArrayList<PersistedSong>();
-			for (Map<String, PersistedSong> shard : songShards) {
-				songs.addAll(shard.values());
-			}
-			return songs;
+		private Iterable<PersistedSong> allSongs() {
+			return () -> songShards.stream().flatMap(shard -> shard.values().stream()).iterator();
 		}
 
 		private Collection<PersistedFolder> allFolders() {
